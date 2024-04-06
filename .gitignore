@@ -62,9 +62,6 @@ TEST-results.xml
 package-lock.json
 .eslintcache
 *v8.log
-/lib/
-InputData.xlsx
-Tips.pptx
 .tmp/
 dist/
 webpack.statistics*.html
