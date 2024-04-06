@@ -80,6 +80,7 @@ export class Visual implements IVisual {
     private target: HTMLElement;
     private formattingSettings: VisualFormattingSettingsModel;
     private formattingSettingsService: FormattingSettingsService;
+    private maskIdCounter: number = 0;
 
     constructor(options: VisualConstructorOptions) {
         this.formattingSettingsService = new FormattingSettingsService();
@@ -151,10 +152,10 @@ export class Visual implements IVisual {
             const outerContainerWidth = outerContainer.offsetWidth;
             const containerDivWidth = cupCanvasWidth + 10 + 20 + 2 * this.formattingSettings.containerCard.containerBorderGroup.borderThickness.value; // 2 * 5px margin aroound cupCanvas + 2 * 10px margin around container + 2 * border thickness
             const containerDivsPerRow = Math.floor(outerContainerWidth / containerDivWidth);
-            
+
             const legendDiv = document.createElement('div');
             legendDiv.className = 'legendContainer';
-            legendDiv.innerHTML = "<b>Height:</b> " + this.formattingSettings.legendCard.heightText.value+ '<br>'
+            legendDiv.innerHTML = "<b>Height:</b> " + this.formattingSettings.legendCard.heightText.value + '<br>'
                 + '<b>Width:</b> ' + this.formattingSettings.legendCard.widthText.value + '<br>'
                 + '<b>Water Level:</b> ' + this.formattingSettings.legendCard.waterLevelText.value + '<br>'
                 + '<b>Water Color:</b> ' + this.formattingSettings.legendCard.waterColorText.value;
@@ -181,11 +182,12 @@ export class Visual implements IVisual {
         const container = svg.append("g")
             .classed('container', true);
 
-        const bottomOvalShrink = 0.65;
+        const bottomOvalShrink = 0.9;
+        const glassThickness = Math.max(width * 0.05, 8);
 
         const cx = containerWidth / 2;
         const cy = 0.9 * containerHeight - height / 2;
-        
+
         const bottomY = cy + height / 2;
         const topY = cy - height / 2;
         const topR = width / 2;
@@ -195,28 +197,106 @@ export class Visual implements IVisual {
         const strokeColor = this.formattingSettings.cupCard.cupVisualGroupSettings.strokeColor.value.value;
         const strokeThickness = this.formattingSettings.cupCard.cupVisualGroupSettings.strokeThickness.value;
 
-        // Draw fill, first, so it'll be at the bottom
-        const bottomOval = container.append("ellipse")
+        const glassColor = "#e4f1f7";
+
+        /**
+         * The cup is drawn in the following order:
+         * 1. Bottom outer oval
+         * 2. Glass wall fill
+         * 3. Glass outer wall
+         * 4. Bottom inner oval
+         * 5. Water fill
+         * 6. Glass inner wall
+         * 7. Water top oval
+         * 8. Upper arc
+         * 9. Reflection
+         */
+
+        // Define the line generator for later use
+        let line = d3.line()
+            .x(function (d) { return d[0]; })
+            .y(function (d) { return d[1]; });
+
+        // 1. Bottom outer oval
+        const bottomOuterOval = container.append("ellipse")
             .attr("cx", cx)
             .attr("cy", cy + height / 2)
             .attr("rx", bottomR)
             .attr("ry", bottomR / 5)
-            .classed('filledArea', true)
+            .style("stroke-width", strokeThickness)
+            .style("stroke", strokeColor)
+            .style("fill", glassColor);
+
+        const bottomOuterOvalOverlay = container.append("ellipse")
+            .attr("cx", cx)
+            .attr("cy", cy + height / 2 - strokeThickness)
+            .attr("rx", bottomR)
+            .attr("ry", bottomR / 5)
+            .style("stroke-width", "none")
+            .style("fill", glassColor);
+
+        // 2. Glass wall fill
+        // Left side
+        let points = [
+            { x: cx - topR, y: topY }, // top left 
+            { x: cx - topR + glassThickness, y: topY }, // top right 
+            { x: cx - bottomR + glassThickness, y: bottomY }, // bottom right 
+            { x: cx - bottomR, y: bottomY }  // bottom left 
+        ]
+
+        const leftWall = container.append("path")
+            .attr("d", line(points.map(p => [p.x, p.y])))
+            .style("stroke", "none")
+            .style("fill", glassColor);
+
+        // Right side
+        points = [
+            { x: cx + topR, y: topY }, // top left point of the top oval
+            { x: cx + topR - glassThickness, y: topY }, // top right point of the top oval
+            { x: cx + bottomR - glassThickness, y: bottomY }, // bottom right point of the bottom oval
+            { x: cx + bottomR, y: bottomY }  // bottom left point of the bottom oval
+        ]
+
+        const rightWall = container.append("path")
+            .attr("d", line(points.map(p => [p.x, p.y])))
+            .style("stroke", "none")
+            .style("fill", glassColor);
+
+        // 3. Glass outer wall
+        const leftOuterLine = container.append("line")
+            .attr("x1", cx - topR)
+            .attr("y1", topY)
+            .attr("x2", cx - bottomR)
+            .attr("y2", bottomY)
             .style("stroke-width", strokeThickness)
             .style("stroke", strokeColor);
 
-        // Define the points for the path
-        let points = [
-            { x: cx - liquidR, y: bottomY - height * fillRate }, // top left point of the top oval
-            { x: cx + liquidR, y: bottomY - height * fillRate }, // top right point of the top oval
-            { x: cx + bottomR, y: bottomY }, // bottom right point of the bottom oval
-            { x: cx - bottomR, y: bottomY }  // bottom left point of the bottom oval
-        ];
+        const rightOuterLine = container.append("line")
+            .attr("x1", cx + topR)
+            .attr("y1", topY)
+            .attr("x2", cx + bottomR)
+            .attr("y2", bottomY)
+            .style("stroke-width", strokeThickness)
+            .style("stroke", strokeColor);
 
-        // Define the line generator
-        let line = d3.line()
-            .x(function (d) { return d[0]; })
-            .y(function (d) { return d[1]; });
+        // 4. Bottom inner oval
+        const bottomInnerOval = container.append("ellipse")
+            .attr("cx", cx)
+            .attr("cy", cy + height / 2 )
+            .attr("rx", bottomR - glassThickness)
+            .attr("ry", bottomR / 5 - glassThickness / 2)
+            .style("stroke-width", strokeThickness)
+            .style("stroke", strokeColor)
+            .classed('filledArea', true);
+
+        // 5. Water fill
+        // Define the points for the path
+        points = [
+            { x: cx - liquidR + glassThickness, y: bottomY - height * fillRate }, // top left point of the top oval
+            { x: cx + liquidR - glassThickness, y: bottomY - height * fillRate }, // top right point of the top oval
+            { x: cx + bottomR - glassThickness, y: bottomY }, // bottom right point of the bottom oval
+            { x: cx - bottomR + glassThickness, y: bottomY }  // bottom left point of the bottom oval
+        ];
 
         // Append the path and apply the line generator
         const filledArea = container.append("path")
@@ -224,47 +304,90 @@ export class Visual implements IVisual {
             .classed('filledArea', true)
             .style("stroke", "none");
 
+        // 6. Glass inner wall
+        const leftInnerLine = container.append("line")
+            .attr("x1", cx - topR + glassThickness)
+            .attr("y1", topY)
+            .attr("x2", cx - bottomR + glassThickness)
+            .attr("y2", bottomY)
+            .style("stroke-width", strokeThickness)
+            .style("stroke", strokeColor);
+
+        const rightInnerLine = container.append("line")
+            .attr("x1", cx + topR - glassThickness)
+            .attr("y1", topY)
+            .attr("x2", cx + bottomR - glassThickness)
+            .attr("y2", bottomY)
+            .style("stroke-width", strokeThickness)
+            .style("stroke", strokeColor);
+
+        // 7. Water top oval
         const liquidTopOval = container.append("ellipse")
             .attr("cx", cx)
             .attr("cy", bottomY - height * fillRate)
-            .attr("rx", liquidR)
+            .attr("rx", liquidR - glassThickness)
             .attr("ry", liquidR / 5)
             .classed('filledArea', true)
             .style("stroke-width", strokeThickness)
-            .style("stroke", "grey");
+            .style("stroke", strokeColor);
 
-        // Draw the rest of the cup
-        // Create the larger oval at the top
-        const topOval = container.append("ellipse")
+        // 8. Upper arc
+        let maskId = "myMask" + this.maskIdCounter++;
+        let mask = container.append("defs").append("mask").attr("id", maskId);
+        mask.append("ellipse")
             .attr("cx", cx)
             .attr("cy", topY)
             .attr("rx", topR)
             .attr("ry", topR / 5)
-            .classed('topOval', true)
-            .style("fill", "transparent")
-            .style("stroke-width", strokeThickness)
-            .style("stroke", strokeColor);
+            .style("fill", "white");
 
-        // Create the left line connecting the ovals
-        const leftLine = container.append("line")
-            .attr("x1", cx - topR)
-            .attr("y1", topY)
-            .attr("x2", cx - bottomR)
-            .attr("y2", bottomY)
-            .classed('leftLine', true)
-            .style("stroke-width", strokeThickness)
-            .style("stroke", strokeColor);
+        mask.append("ellipse")
+            .attr("cx", cx)
+            .attr("cy", topY)
+            .attr("rx", topR - glassThickness)
+            .attr("ry", topR / 5 - glassThickness / 2)
+            .style("fill", "black");
 
-        // Create the right line connecting the ovals
-        const rightLine = container.append("line")
-            .attr("x1", cx + topR)
-            .attr("y1", topY)
-            .attr("x2", cx + bottomR)
-            .attr("y2", bottomY)
-            .classed('rightLine', true)
+        const topFillOval = container.append("ellipse")
+            .attr("cx", cx)
+            .attr("cy", topY)
+            .attr("rx", topR)
+            .attr("ry", topR / 5)
             .style("stroke-width", strokeThickness)
-            .style("stroke", strokeColor);
+            .style("fill", glassColor)
+            .attr("mask", "url(#" + maskId + ")");
 
+        const topOvalOuterStroke = container.append("ellipse")
+            .attr("cx", cx)
+            .attr("cy", topY)
+            .attr("rx", topR)
+            .attr("ry", topR / 5)
+            .style("stroke-width", strokeThickness)
+            .style("stroke", strokeColor)
+            .style("fill", "none");
+
+        const topOvalInnerStroke = container.append("ellipse")
+            .attr("cx", cx)
+            .attr("cy", topY)
+            .attr("rx", topR - glassThickness)
+            .attr("ry", topR / 5 - glassThickness / 2)
+            .style("stroke-width", strokeThickness)
+            .style("stroke", strokeColor)
+            .style("fill", "none");
+
+        // 9. Reflection
+        points = [
+            { x: cx + topR * 0.3, y: bottomY - height * 0.6 + topR / 15}, // top left point of the top oval
+            { x: cx + topR * 0.6, y: bottomY - height * 0.6 }, // top right point of the top oval
+            { x: cx + bottomR * 0.6, y: bottomY - height * 0.1 }, // bottom right point of the bottom oval
+            { x: cx + bottomR * 0.3, y: bottomY - height * 0.1 + bottomR / 15 }  // bottom left point of the bottom oval
+        ];
+
+        // Append the path and apply the line generator
+        const reflection = container.append("path")
+            .attr("d", line(points.map(p => [p.x, p.y])))
+            .style("stroke", "none")
+            .style("fill", "rgba(255, 255, 255, 0.5)");
         return svg;
     }
 
