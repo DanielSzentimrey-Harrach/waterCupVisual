@@ -50,9 +50,10 @@ interface WaterCupViewModel {
     data: WaterCupData[];
 }
 
-
-
 function scaleNumber(inputMin: number, inputMax: number, outputMin: number, outputMax: number, inputValue: number, rootN: number): number {
+    if (inputMin === inputMax) {
+        return (outputMin + outputMax) / 2;
+    }
     inputMin = Math.pow(inputMin, 1 / rootN);
     inputMax = Math.pow(inputMax, 1 / rootN);
     inputValue = Math.pow(inputValue, 1 / rootN);
