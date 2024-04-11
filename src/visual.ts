@@ -30,8 +30,9 @@ import powerbi from "powerbi-visuals-api";
 import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructorOptions;
 import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
 import IVisual = powerbi.extensibility.visual.IVisual;
+import ISelectionID = powerbi.visuals.ISelectionId;
 import DataView = powerbi.DataView;
-import IVisualHost = powerbi.extensibility.IVisualHost;
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import * as d3 from "d3";
 type Selection<T extends d3.BaseType> = d3.Selection<T, any, any, any>;
 import { VisualFormattingSettingsModel } from "./settings";
@@ -44,6 +45,7 @@ interface WaterCupData {
     width: number;
     fillRate: number;
     colorLevel: string;
+    selectionId: ISelectionID;
 }
 
 interface WaterCupViewModel {
@@ -82,11 +84,13 @@ export class Visual implements IVisual {
     private formattingSettings: VisualFormattingSettingsModel;
     private formattingSettingsService: FormattingSettingsService;
     private maskIdCounter: number = 0;
+    private selectionManager: powerbi.extensibility.ISelectionManager;
 
     constructor(options: VisualConstructorOptions) {
         this.formattingSettingsService = new FormattingSettingsService();
         this.host = options.host;
         this.target = options.element;
+        this.selectionManager = options.host.createSelectionManager();
         options.element.style.overflow = "auto";
     }
 
@@ -120,6 +124,10 @@ export class Visual implements IVisual {
             const cupDiv = document.createElement('div');
             cupDiv.style.height = cupCanvasHeight + 'px';
             cupDiv.style.margin = '5px';
+            cupDiv.addEventListener('click', () => {
+                this.selectionManager.select(viewModel.data[i].selectionId);
+                console.log("Category: " + viewModel.data[i].category + " selected");
+            });
             let cup = this.getCup(viewModel.data[i].height, viewModel.data[i].width, viewModel.data[i].fillRate, cupCanvasWidth, cupCanvasHeight);
             cupDiv.appendChild(cup.node());
             d3.select(cup.node()).style('background-color', this.formattingSettings.cupCard.cupCanvasGroupSettings.backgroundColor.value.value);
@@ -437,7 +445,8 @@ export class Visual implements IVisual {
                 fillRate: scaleNumber(rawFillRatesMin, rawFillRatesMax, 0.1, 0.9, <number>rawFillRates.values[i], 1),
                 colorLevel: interpolateColor(this.formattingSettings.cupCard.cupVisualGroupSettings.waterColorLow.value.value,
                     this.formattingSettings.cupCard.cupVisualGroupSettings.waterColorLow.value.value,
-                    scaleNumber(rawColorLevelsMin, rawColorLevelsMax, 0.01, 0.99, <number>rawColorLevels.values[i], 1))
+                    scaleNumber(rawColorLevelsMin, rawColorLevelsMax, 0.01, 0.99, <number>rawColorLevels.values[i], 1)),
+                selectionId: this.host.createSelectionIdBuilder().withCategory(categories, i).createSelectionId()
             });
         }
 
