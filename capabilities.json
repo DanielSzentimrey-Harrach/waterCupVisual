@@ -276,6 +276,14 @@
     },
     "dataViewMappings": [
         {
+            "conditions": [
+                { "category": { "max": 1 },
+                 "categoryComments": { "max": 1 } ,
+                 "height": { "max": 1 } ,
+                 "width": { "max": 1 } ,
+                 "waterlevel": { "max": 1 } ,
+                 "watercolor": { "max": 1 } }
+            ],
             "categorical": {
                 "categories": {
                     "for": {
