@@ -124,9 +124,9 @@ export class Visual implements IVisual {
             const cupDiv = document.createElement('div');
             cupDiv.style.height = cupCanvasHeight + 'px';
             cupDiv.style.margin = '5px';
-            cupDiv.addEventListener('click', () => {
-                this.selectionManager.select(viewModel.data[i].selectionId);
-                console.log("Category: " + viewModel.data[i].category + " selected");
+            cupDiv.addEventListener('click', (mouseEvent) => {
+                const multiSelect = (mouseEvent as MouseEvent).ctrlKey;
+                this.selectionManager.select(viewModel.data[i].selectionId, multiSelect);
             });
             let cup = this.getCup(viewModel.data[i].height, viewModel.data[i].width, viewModel.data[i].fillRate, cupCanvasWidth, cupCanvasHeight);
             cupDiv.appendChild(cup.node());
