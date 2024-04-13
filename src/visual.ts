@@ -96,10 +96,16 @@ export class Visual implements IVisual {
 
     public update(options: VisualUpdateOptions) {
         this.formattingSettings = this.formattingSettingsService.populateFormattingSettingsModel(VisualFormattingSettingsModel, options.dataViews[0]);
-        let vpWidth: number = options.viewport.width // divide by 2 because there are two divs
-        let vpHeight: number = options.viewport.height;
+        //let vpWidth: number = options.viewport.width // divide by 2 because there are two divs
+        //let vpHeight: number = options.viewport.height;
 
         const dataView: powerbi.DataView = options.dataViews[0];
+
+        if (!this.validateDataView(dataView)) {
+            /// TODO: fix this so it displays at the middle of the visual
+            this.target.innerHTML = "<div class='noData'>Please select a Category, Height, and Water Level</div>";
+            return;
+        }
 
         //const maxDivWidth = 300;
         //let divWidth = Math.min(vpWidth, maxDivWidth);
@@ -145,6 +151,7 @@ export class Visual implements IVisual {
             categoryHeader.style.textAlign = this.formattingSettings.textCard.textCategoryGroupSettings.categoryAlignment.value;
             containerDiv.appendChild(categoryHeader);
 
+            if (viewModel.data[i].comments === undefined) continue;
             const commentsParagraph = document.createElement('p');
             commentsParagraph.innerText = viewModel.data[i].comments;
             commentsParagraph.style.fontFamily = this.formattingSettings.textCard.textCommentGroupSettings.commentFormat.fontFamily.value;
@@ -181,6 +188,16 @@ export class Visual implements IVisual {
 
     public getFormattingModel(): powerbi.visuals.FormattingModel {
         return this.formattingSettingsService.buildFormattingModel(this.formattingSettings);
+    }
+
+    // Validate the data view to ensure that the mandatory fields are present
+    private validateDataView(dataView: DataView): boolean {
+        if (!dataView || !dataView.metadata || !dataView.metadata.columns) {
+            return false;
+        }
+        const requiredColumns = ['category', 'height', 'waterlevel'];
+        const columnsInDataView = dataView.metadata.columns.map(column => Object.keys(column.roles)[0]);
+        return requiredColumns.every(column => columnsInDataView.includes(column));
     }
 
     private getCup(height: number, width: number, fillRate: number, containerWidth: number, containerHeight: number): Selection<SVGElement> {
@@ -291,7 +308,7 @@ export class Visual implements IVisual {
         // 4. Bottom inner oval
         const bottomInnerOval = container.append("ellipse")
             .attr("cx", cx)
-            .attr("cy", cy + height / 2 )
+            .attr("cy", cy + height / 2)
             .attr("rx", bottomR - glassThickness)
             .attr("ry", bottomR / 5 - glassThickness / 2)
             .style("stroke-width", strokeThickness)
@@ -386,7 +403,7 @@ export class Visual implements IVisual {
 
         // 9. Reflection
         points = [
-            { x: cx + topR * 0.3, y: bottomY - height * 0.6 + topR / 15}, // top left point of the top oval
+            { x: cx + topR * 0.3, y: bottomY - height * 0.6 + topR / 15 }, // top left point of the top oval
             { x: cx + topR * 0.6, y: bottomY - height * 0.6 }, // top right point of the top oval
             { x: cx + bottomR * 0.6, y: bottomY - height * 0.1 }, // bottom right point of the bottom oval
             { x: cx + bottomR * 0.3, y: bottomY - height * 0.1 + bottomR / 15 }  // bottom left point of the bottom oval
@@ -405,51 +422,58 @@ export class Visual implements IVisual {
             data: []
         };
 
-        if (!dataView
-            || !dataView.categorical
-            || !dataView.categorical.categories
-            || !dataView.categorical.categories[0].source
-            || !dataView.categorical.values
-        ) {
-            return viewModel;
+        // Determine which data roles are present in the data view and identify their indeces
+        let commentsIndex = dataView.categorical.values.map(value => value.source.roles).findIndex(roles => roles.hasOwnProperty('categoryComments'));
+        let heightIndex = dataView.categorical.values.map(value => value.source.roles).findIndex(roles => roles.hasOwnProperty('height'));
+        let widthIndex = dataView.categorical.values.map(value => value.source.roles).findIndex(roles => roles.hasOwnProperty('width'));
+        // if there is no width data specified, we'll use the values from height to determine the relative widths
+        if (widthIndex === -1) {
+            widthIndex = heightIndex;
         }
+        let waterLevelIndex = dataView.categorical.values.map(value => value.source.roles).findIndex(roles => roles.hasOwnProperty('waterlevel'));
+        let colorLevelIndex = dataView.categorical.values.map(value => value.source.roles).findIndex(roles => roles.hasOwnProperty('watercolor'));
 
         let categories = dataView.categorical.categories[0];
-        let comments = dataView.categorical.values[0];
-        let rawHeights = dataView.categorical.values[1];
-        let rawHeightMin = <number>dataView.categorical.values[1].minLocal;
-        let rawHeightMax = <number>dataView.categorical.values[1].maxLocal;
-        let rawWidths = dataView.categorical.values[2];
-        let rawWidthMin = <number>dataView.categorical.values[2].minLocal;
-        let rawWidthMax = <number>dataView.categorical.values[2].maxLocal;
-        let rawFillRates = dataView.categorical.values[3];
-        let rawFillRatesMin = <number>dataView.categorical.values[3].minLocal;
-        let rawFillRatesMax = <number>dataView.categorical.values[3].maxLocal;
-        let rawColorLevels = dataView.categorical.values[4];
-        let rawColorLevelsMin = <number>dataView.categorical.values[4].minLocal;
-        let rawColorLevelsMax = <number>dataView.categorical.values[4].maxLocal;
+        let comments = dataView.categorical.values[commentsIndex];
+        let rawHeights = dataView.categorical.values[heightIndex];
+        let rawHeightMin = <number>dataView.categorical.values[heightIndex].minLocal;
+        let rawHeightMax = <number>dataView.categorical.values[heightIndex].maxLocal;
+        let rawWidths = dataView.categorical.values[widthIndex];
+        let rawWidthMin = <number>dataView.categorical.values[widthIndex].minLocal;
+        let rawWidthMax = <number>dataView.categorical.values[widthIndex].maxLocal;
+        let rawWaterLevel = dataView.categorical.values[waterLevelIndex];
+        let rawWaterLevelMin = <number>dataView.categorical.values[waterLevelIndex].minLocal;
+        let rawWaterLevelMax = <number>dataView.categorical.values[waterLevelIndex].maxLocal;
+        let rawColorLevels: any;
+        let rawColorLevelsMin = 1;
+        let rawColorLevelsMax = 1;
+        if (colorLevelIndex !== -1) {
+            rawColorLevels = dataView.categorical.values[colorLevelIndex];
+            rawColorLevelsMin = <number>dataView.categorical.values[colorLevelIndex].minLocal;
+            rawColorLevelsMax = <number>dataView.categorical.values[colorLevelIndex].maxLocal;
+        }
 
         const maxHeight = height * 0.8;
         const minHeight = height * 0.2;
         const maxWidth = width * 0.95;
-        const minWidth = width * 0.2;
-
-        for (let i = 0; i < Math.max(categories.values.length, comments.values.length, rawHeights.values.length, rawWidths.values.length, rawFillRates.values.length, rawColorLevels.values.length); i++) {
-
-
+        const minWidth = width * 0.4;
+        for (let i = 0; i < categories.values.length; i++) {
+            let colorLevel = this.formattingSettings.cupCard.cupVisualGroupSettings.waterColorLow.value.value;
+            if (colorLevelIndex !== -1) {
+                colorLevel = interpolateColor(this.formattingSettings.cupCard.cupVisualGroupSettings.waterColorLow.value.value,
+                    this.formattingSettings.cupCard.cupVisualGroupSettings.waterColorLow.value.value,
+                    scaleNumber(rawColorLevelsMin, rawColorLevelsMax, 0.01, 0.99, <number>rawColorLevels.values[i], 1));
+            }
             viewModel.data.push({
                 category: <string>categories.values[i],
-                comments: <string>comments.values[i],
+                comments: <string>comments?.values[i] ?? undefined,
                 height: scaleNumber(rawHeightMin, rawHeightMax, minHeight, maxHeight, <number>rawHeights.values[i], 3),
                 width: scaleNumber(rawWidthMin, rawWidthMax, minWidth, maxWidth, <number>rawWidths.values[i], 3),
-                fillRate: scaleNumber(rawFillRatesMin, rawFillRatesMax, 0.1, 0.9, <number>rawFillRates.values[i], 1),
-                colorLevel: interpolateColor(this.formattingSettings.cupCard.cupVisualGroupSettings.waterColorLow.value.value,
-                    this.formattingSettings.cupCard.cupVisualGroupSettings.waterColorLow.value.value,
-                    scaleNumber(rawColorLevelsMin, rawColorLevelsMax, 0.01, 0.99, <number>rawColorLevels.values[i], 1)),
+                fillRate: scaleNumber(rawWaterLevelMin, rawWaterLevelMax, 0.1, 0.9, <number>rawWaterLevel.values[i], 1),
+                colorLevel: colorLevel,
                 selectionId: this.host.createSelectionIdBuilder().withCategory(categories, i).createSelectionId()
             });
         }
-
         return viewModel;
     }
 }
