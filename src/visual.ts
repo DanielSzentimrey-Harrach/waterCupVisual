@@ -37,6 +37,8 @@ import * as d3 from "d3";
 type Selection<T extends d3.BaseType> = d3.Selection<T, any, any, any>;
 import { VisualFormattingSettingsModel } from "./settings";
 import { FormattingSettingsService } from "powerbi-visuals-utils-formattingmodel";
+import { ITooltipServiceWrapper, createTooltipServiceWrapper, TooltipEventArgs } from "powerbi-visuals-utils-tooltiputils";
+type VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 
 interface WaterCupData {
     category: string;
@@ -85,6 +87,7 @@ export class Visual implements IVisual {
     private formattingSettingsService: FormattingSettingsService;
     private maskIdCounter: number = 0;
     private selectionManager: powerbi.extensibility.ISelectionManager;
+    private tooltipServiceWrapper: ITooltipServiceWrapper;
 
     constructor(options: VisualConstructorOptions) {
         this.formattingSettingsService = new FormattingSettingsService();
@@ -92,6 +95,7 @@ export class Visual implements IVisual {
         this.target = options.element;
         this.selectionManager = options.host.createSelectionManager();
         options.element.style.overflow = "auto";
+        this.tooltipServiceWrapper = createTooltipServiceWrapper(this.host.tooltipService, options.element);
     }
 
     public update(options: VisualUpdateOptions) {
@@ -138,6 +142,7 @@ export class Visual implements IVisual {
             cupDiv.appendChild(cup.node());
             d3.select(cup.node()).style('background-color', this.formattingSettings.cupCard.cupCanvasGroupSettings.backgroundColor.value.value);
             d3.select(cup.node()).selectAll('.filledArea').style('fill', viewModel.data[i].colorLevel);
+            d3.select(cup.node()).data([viewModel.data[i]]);
             containerDiv.appendChild(cupDiv);
 
             const categoryHeader = document.createElement('h3');
@@ -184,6 +189,12 @@ export class Visual implements IVisual {
             legendDiv.style.width = containerDivsPerRow * containerDivWidth - 30 + 'px'; // 30px is the 2 * 10 px margin around the outerContainer, plus the 2 * 5px padding within the label container
             this.target.appendChild(legendDiv);
         }
+
+        this.tooltipServiceWrapper.addTooltip(
+            d3.selectAll('svg'),
+            (tooltipEvent: TooltipEventArgs<WaterCupData>) => Visual.getTooltipData(tooltipEvent),
+            (tooltipEvent: TooltipEventArgs<WaterCupData>) => null
+        );
     }
 
     public getFormattingModel(): powerbi.visuals.FormattingModel {
@@ -206,19 +217,25 @@ export class Visual implements IVisual {
             .attr("width", containerWidth)
             .attr("height", containerHeight);
         const container = svg.append("g")
-            .classed('container', true);
+            .classed('cupContainer', true);
 
         const bottomOvalShrink = 0.9;
-        const glassThickness = Math.max(width * 0.05, 8);
+        const glassThickness = Math.min(Math.max(width * 0.05, 8), 15);
 
         const cx = containerWidth / 2;
-        const cy = 0.9 * containerHeight - height / 2;
+        
 
-        const bottomY = cy + height / 2;
+        const bottomR = width / 2 * bottomOvalShrink;
+        const bottomY = 0.95 * containerHeight - bottomR / 5;
+        const cy = bottomY - height / 2;
         const topY = cy - height / 2;
         const topR = width / 2;
-        const bottomR = width / 2 * bottomOvalShrink;
-        const liquidR = bottomR + (topR - bottomR) * fillRate;
+        const topInnerR = width / 2 - glassThickness;        
+        const bottomInnerR = bottomR + (glassThickness * (topR - bottomR) / height) - glassThickness;
+        //const bottomR = width / 2 * bottomOvalShrink + (glassThickness * (1 - bottomOvalShrink) * width / 2) / height;
+        //console.log("bottomR: ", bottomR, "bottomInnerR: ", bottomInnerR);
+        const liquidY = bottomY - glassThickness - (height - glassThickness) * fillRate
+        const liquidR = bottomInnerR + (topInnerR - bottomInnerR) * fillRate;
 
         const strokeColor = this.formattingSettings.cupCard.cupVisualGroupSettings.strokeColor.value.value;
         const strokeThickness = this.formattingSettings.cupCard.cupVisualGroupSettings.strokeThickness.value;
@@ -246,7 +263,7 @@ export class Visual implements IVisual {
         // 1. Bottom outer oval
         const bottomOuterOval = container.append("ellipse")
             .attr("cx", cx)
-            .attr("cy", cy + height / 2)
+            .attr("cy", bottomY)
             .attr("rx", bottomR)
             .attr("ry", bottomR / 5)
             .style("stroke-width", strokeThickness)
@@ -255,7 +272,7 @@ export class Visual implements IVisual {
 
         const bottomOuterOvalOverlay = container.append("ellipse")
             .attr("cx", cx)
-            .attr("cy", cy + height / 2 - strokeThickness)
+            .attr("cy", bottomY - strokeThickness)
             .attr("rx", bottomR)
             .attr("ry", bottomR / 5)
             .style("stroke-width", "none")
@@ -308,9 +325,9 @@ export class Visual implements IVisual {
         // 4. Bottom inner oval
         const bottomInnerOval = container.append("ellipse")
             .attr("cx", cx)
-            .attr("cy", cy + height / 2)
-            .attr("rx", bottomR - glassThickness)
-            .attr("ry", bottomR / 5 - glassThickness / 2)
+            .attr("cy", bottomY - glassThickness)
+            .attr("rx", bottomInnerR)
+            .attr("ry", bottomInnerR / 5)
             .style("stroke-width", strokeThickness)
             .style("stroke", strokeColor)
             .classed('filledArea', true);
@@ -318,10 +335,10 @@ export class Visual implements IVisual {
         // 5. Water fill
         // Define the points for the path
         points = [
-            { x: cx - liquidR + glassThickness, y: bottomY - height * fillRate }, // top left point of the top oval
-            { x: cx + liquidR - glassThickness, y: bottomY - height * fillRate }, // top right point of the top oval
-            { x: cx + bottomR - glassThickness, y: bottomY }, // bottom right point of the bottom oval
-            { x: cx - bottomR + glassThickness, y: bottomY }  // bottom left point of the bottom oval
+            { x: cx - liquidR, y: liquidY }, // top left point of the top oval
+            { x: cx + liquidR, y: liquidY }, // top right point of the top oval
+            { x: cx + bottomInnerR, y: bottomY - glassThickness }, // bottom right point of the bottom oval
+            { x: cx - bottomInnerR, y: bottomY - glassThickness }  // bottom left point of the bottom oval
         ];
 
         // Append the path and apply the line generator
@@ -334,25 +351,25 @@ export class Visual implements IVisual {
         const leftInnerLine = container.append("line")
             .attr("x1", cx - topR + glassThickness)
             .attr("y1", topY)
-            .attr("x2", cx - bottomR + glassThickness)
-            .attr("y2", bottomY)
+            .attr("x2", cx - bottomInnerR)
+            .attr("y2", bottomY - glassThickness)
             .style("stroke-width", strokeThickness)
             .style("stroke", strokeColor);
 
         const rightInnerLine = container.append("line")
             .attr("x1", cx + topR - glassThickness)
             .attr("y1", topY)
-            .attr("x2", cx + bottomR - glassThickness)
-            .attr("y2", bottomY)
+            .attr("x2", cx + bottomInnerR)
+            .attr("y2", bottomY - glassThickness)
             .style("stroke-width", strokeThickness)
             .style("stroke", strokeColor);
 
         // 7. Water top oval
         const liquidTopOval = container.append("ellipse")
             .attr("cx", cx)
-            .attr("cy", bottomY - height * fillRate)
-            .attr("rx", liquidR - glassThickness)
-            .attr("ry", liquidR / 5)
+            .attr("cy", liquidY)
+            .attr("rx", liquidR)
+            .attr("ry", liquidR / 5 - glassThickness / 2)
             .classed('filledArea', true)
             .style("stroke-width", strokeThickness)
             .style("stroke", strokeColor);
@@ -370,8 +387,8 @@ export class Visual implements IVisual {
         mask.append("ellipse")
             .attr("cx", cx)
             .attr("cy", topY)
-            .attr("rx", topR - glassThickness)
-            .attr("ry", topR / 5 - glassThickness / 2)
+            .attr("rx", topInnerR)
+            .attr("ry", topInnerR / 5 - glassThickness / 2)
             .style("fill", "black");
 
         const topFillOval = container.append("ellipse")
@@ -395,8 +412,8 @@ export class Visual implements IVisual {
         const topOvalInnerStroke = container.append("ellipse")
             .attr("cx", cx)
             .attr("cy", topY)
-            .attr("rx", topR - glassThickness)
-            .attr("ry", topR / 5 - glassThickness / 2)
+            .attr("rx", topInnerR)
+            .attr("ry", topInnerR / 5 - glassThickness / 2)
             .style("stroke-width", strokeThickness)
             .style("stroke", strokeColor)
             .style("fill", "none");
@@ -414,6 +431,7 @@ export class Visual implements IVisual {
             .attr("d", line(points.map(p => [p.x, p.y])))
             .style("stroke", "none")
             .style("fill", "rgba(255, 255, 255, 0.5)");
+
         return svg;
     }
 
@@ -476,4 +494,31 @@ export class Visual implements IVisual {
         }
         return viewModel;
     }
+
+    private static getTooltipData(value: any): VisualTooltipDataItem[] {
+        return [{
+            header: value.category,
+            displayName: "Height",
+            value: value.height.toString()
+        }, {
+            displayName: "Width",
+            value: value.width.toString()
+        }, {
+            displayName: "Water Level",
+            value: value.fillRate.toString()
+        }, {
+            displayName: "Water Color",
+            value: value.colorLevel
+
+        }];
+    }
 }
+/*
+interface VisualTooltipDataItem {
+    displayName: string;
+    value: string;
+    color?: string;
+    header?: string;
+    opacity?: string;
+}
+*/
