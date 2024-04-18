@@ -48,6 +48,7 @@ interface WaterCupData {
     fillRate: number;
     colorLevel: string;
     selectionId: ISelectionID;
+    tooltipInfo: Record<string, any>;
 }
 
 interface WaterCupViewModel {
@@ -142,7 +143,7 @@ export class Visual implements IVisual {
             cupDiv.appendChild(cup.node());
             d3.select(cup.node()).style('background-color', this.formattingSettings.cupCard.cupCanvasGroupSettings.backgroundColor.value.value);
             d3.select(cup.node()).selectAll('.filledArea').style('fill', viewModel.data[i].colorLevel);
-            d3.select(cup.node()).data([viewModel.data[i]]);
+            d3.select(cup.node()).data([viewModel.data[i].tooltipInfo]);
             containerDiv.appendChild(cupDiv);
 
             const categoryHeader = document.createElement('h3');
@@ -192,8 +193,8 @@ export class Visual implements IVisual {
 
         this.tooltipServiceWrapper.addTooltip(
             d3.selectAll('svg'),
-            (tooltipEvent: TooltipEventArgs<WaterCupData>) => Visual.getTooltipData(tooltipEvent),
-            (tooltipEvent: TooltipEventArgs<WaterCupData>) => null
+            (tooltipEvent: TooltipEventArgs<Record<string, any>>) => Visual.getTooltipData(tooltipEvent),
+            (tooltipEvent: TooltipEventArgs<Record<string, any>>) => null
         );
     }
 
@@ -232,8 +233,6 @@ export class Visual implements IVisual {
         const topR = width / 2;
         const topInnerR = width / 2 - glassThickness;        
         const bottomInnerR = bottomR + (glassThickness * (topR - bottomR) / height) - glassThickness;
-        //const bottomR = width / 2 * bottomOvalShrink + (glassThickness * (1 - bottomOvalShrink) * width / 2) / height;
-        //console.log("bottomR: ", bottomR, "bottomInnerR: ", bottomInnerR);
         const liquidY = bottomY - glassThickness - (height - glassThickness) * fillRate
         const liquidR = bottomInnerR + (topInnerR - bottomInnerR) * fillRate;
 
@@ -443,11 +442,9 @@ export class Visual implements IVisual {
         // Determine which data roles are present in the data view and identify their indeces
         let commentsIndex = dataView.categorical.values.map(value => value.source.roles).findIndex(roles => roles.hasOwnProperty('categoryComments'));
         let heightIndex = dataView.categorical.values.map(value => value.source.roles).findIndex(roles => roles.hasOwnProperty('height'));
-        let widthIndex = dataView.categorical.values.map(value => value.source.roles).findIndex(roles => roles.hasOwnProperty('width'));
+        let widthIndexRaw = dataView.categorical.values.map(value => value.source.roles).findIndex(roles => roles.hasOwnProperty('width'));
         // if there is no width data specified, we'll use the values from height to determine the relative widths
-        if (widthIndex === -1) {
-            widthIndex = heightIndex;
-        }
+        let widthIndex = widthIndexRaw === -1 ? heightIndex : widthIndexRaw;
         let waterLevelIndex = dataView.categorical.values.map(value => value.source.roles).findIndex(roles => roles.hasOwnProperty('waterlevel'));
         let colorLevelIndex = dataView.categorical.values.map(value => value.source.roles).findIndex(roles => roles.hasOwnProperty('watercolor'));
 
@@ -482,6 +479,18 @@ export class Visual implements IVisual {
                     this.formattingSettings.cupCard.cupVisualGroupSettings.waterColorLow.value.value,
                     scaleNumber(rawColorLevelsMin, rawColorLevelsMax, 0.01, 0.99, <number>rawColorLevels.values[i], 1));
             }
+            let tooltipData = {
+                [rawHeights.source.displayName]: rawHeights.values[i],            
+                [rawWaterLevel.source.displayName]: rawWaterLevel.values[i]
+            }
+
+            if (widthIndexRaw !== -1) {
+                tooltipData[rawWidths.source.displayName] = rawWidths.values[i];
+            }
+            if (colorLevelIndex !== -1) {
+                tooltipData[rawColorLevels.source.displayName] = rawColorLevels.values[i];
+            }
+
             viewModel.data.push({
                 category: <string>categories.values[i],
                 comments: <string>comments?.values[i] ?? undefined,
@@ -489,14 +498,26 @@ export class Visual implements IVisual {
                 width: scaleNumber(rawWidthMin, rawWidthMax, minWidth, maxWidth, <number>rawWidths.values[i], 3),
                 fillRate: scaleNumber(rawWaterLevelMin, rawWaterLevelMax, 0.1, 0.9, <number>rawWaterLevel.values[i], 1),
                 colorLevel: colorLevel,
-                selectionId: this.host.createSelectionIdBuilder().withCategory(categories, i).createSelectionId()
+                selectionId: this.host.createSelectionIdBuilder().withCategory(categories, i).createSelectionId(),
+                tooltipInfo: tooltipData
             });
         }
         return viewModel;
     }
 
-    private static getTooltipData(value: any): VisualTooltipDataItem[] {
-        return [{
+    private static getTooltipData(value: Record<string, any>): VisualTooltipDataItem[] {
+        let visualTooltipDataItems: VisualTooltipDataItem[] = [];
+        for (let key in value) {
+            visualTooltipDataItems.push({
+                displayName: key,
+                value: value[key].toString()
+            });
+        }        
+        return visualTooltipDataItems;
+    }
+}
+/*
+return [{
             header: value.category,
             displayName: "Height",
             value: value.height.toString()
@@ -511,9 +532,8 @@ export class Visual implements IVisual {
             value: value.colorLevel
 
         }];
-    }
-}
-/*
+
+
 interface VisualTooltipDataItem {
     displayName: string;
     value: string;
