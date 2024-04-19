@@ -169,23 +169,7 @@ export class Visual implements IVisual {
         }
 
         if (this.formattingSettings.legendCard.show.value) {
-            const outerContainerWidth = outerContainer.offsetWidth;
-            const containerDivWidth = cupCanvasWidth + 10 + 20 + 2 * this.formattingSettings.containerCard.containerBorderGroup.borderThickness.value; // 2 * 5px margin aroound cupCanvas + 2 * 10px margin around container + 2 * border thickness
-            const containerDivsPerRow = Math.floor(outerContainerWidth / containerDivWidth);
-
-            const legendDiv = document.createElement('div');
-            legendDiv.className = 'legendContainer';
-            legendDiv.innerHTML = "<b>Height:</b> " + this.formattingSettings.legendCard.heightText.value + '<br>'
-                + '<b>Width:</b> ' + this.formattingSettings.legendCard.widthText.value + '<br>'
-                + '<b>Water Level:</b> ' + this.formattingSettings.legendCard.waterLevelText.value + '<br>'
-                + '<b>Water Color:</b> ' + this.formattingSettings.legendCard.waterColorText.value;
-            legendDiv.style.fontFamily = this.formattingSettings.legendCard.legendFontFamily.value;
-            legendDiv.style.fontSize = this.formattingSettings.legendCard.legendFontSize.value + 'px';
-            legendDiv.style.color = this.formattingSettings.legendCard.legendFontColor.value.value;
-            legendDiv.style.backgroundColor = this.formattingSettings.legendCard.legendBackgroundColor.value.value;
-            legendDiv.style.margin = '10px';
-            legendDiv.style.padding = '5px';
-            legendDiv.style.width = containerDivsPerRow * containerDivWidth - 30 + 'px'; // 30px is the 2 * 10 px margin around the outerContainer, plus the 2 * 5px padding within the label container
+            const legendDiv = this.getLegend(outerContainer.offsetWidth, cupCanvasWidth);
             this.target.appendChild(legendDiv);
         }
 
@@ -223,14 +207,14 @@ export class Visual implements IVisual {
         const glassThickness = Math.min(width * 0.05, 15); //TODO: consider using a uniform thickness for all cups
 
         const cx = containerWidth / 2;
-        
+
 
         const bottomR = width / 2 * bottomOvalShrink;
         const bottomY = 0.95 * containerHeight - bottomR / 5;
         const cy = bottomY - height / 2;
         const topY = cy - height / 2;
         const topR = width / 2;
-        const topInnerR = width / 2 - glassThickness;        
+        const topInnerR = width / 2 - glassThickness;
         const bottomInnerR = bottomR + (glassThickness * (topR - bottomR) / height) - glassThickness;
         const liquidY = bottomY - glassThickness - (height - glassThickness) * fillRate
         const liquidR = bottomInnerR + (topInnerR - bottomInnerR) * fillRate;
@@ -449,6 +433,52 @@ export class Visual implements IVisual {
     }
     /* eslint-enable */
 
+    private getLegend(outerContainerOffsetWidth: number, cupCanvasWidth: number): HTMLDivElement {
+        const outerContainerWidth = outerContainerOffsetWidth;
+        const containerDivWidth = cupCanvasWidth + 10 + 20 + 2 * this.formattingSettings.containerCard.containerBorderGroup.borderThickness.value; // 2 * 5px margin aroound cupCanvas + 2 * 10px margin around container + 2 * border thickness
+        const containerDivsPerRow = Math.floor(outerContainerWidth / containerDivWidth);
+
+        const legendDiv = document.createElement('div');
+        legendDiv.className = 'legendContainer';
+        legendDiv.style.fontFamily = this.formattingSettings.legendCard.legendFontFamily.value;
+        legendDiv.style.fontSize = this.formattingSettings.legendCard.legendFontSize.value + 'px';
+        legendDiv.style.color = this.formattingSettings.legendCard.legendFontColor.value.value;
+        legendDiv.style.backgroundColor = this.formattingSettings.legendCard.legendBackgroundColor.value.value;
+        legendDiv.style.margin = '10px';
+        legendDiv.style.padding = '5px';
+        legendDiv.style.width = containerDivsPerRow * containerDivWidth - 30 + 'px'; // 30px is the 2 * 10 px margin around the outerContainer, plus the 2 * 5px padding within the label container
+        if (this.formattingSettings.legendCard.heightText.value != '') {
+            const heightLegendTitle = document.createElement('b');
+            heightLegendTitle.innerText = "Height: ";
+            legendDiv.appendChild(heightLegendTitle);
+            legendDiv.appendChild(document.createTextNode(this.formattingSettings.legendCard.heightText.value));
+            legendDiv.appendChild(document.createElement('br'));
+        }
+        if (this.formattingSettings.legendCard.widthText.value != '') {
+            const widthLegendTitle = document.createElement('b');
+            widthLegendTitle.innerText = "Width: ";
+            legendDiv.appendChild(widthLegendTitle);
+            legendDiv.appendChild(document.createTextNode(this.formattingSettings.legendCard.widthText.value));
+            legendDiv.appendChild(document.createElement('br'));
+        }
+        if (this.formattingSettings.legendCard.waterLevelText.value != '') {
+            const waterLevelLegendTitle = document.createElement('b');
+            waterLevelLegendTitle.innerText = "Water Level: ";
+            legendDiv.appendChild(waterLevelLegendTitle);
+            legendDiv.appendChild(document.createTextNode(this.formattingSettings.legendCard.waterLevelText.value));
+            legendDiv.appendChild(document.createElement('br'));
+        }
+        if (this.formattingSettings.legendCard.waterColorText.value != '') {
+            const waterColorLegendTitle = document.createElement('b');
+            waterColorLegendTitle.innerText = "Water Color: ";
+            legendDiv.appendChild(waterColorLegendTitle);
+            legendDiv.appendChild(document.createTextNode(this.formattingSettings.legendCard.waterColorText.value));
+            legendDiv.appendChild(document.createElement('br'));
+        }
+
+        return legendDiv;
+    }
+
     private visualTransform(dataView: powerbi.DataView, width: number, height: number): WaterCupViewModel {
         const viewModel: WaterCupViewModel = {
             data: []
@@ -495,7 +525,7 @@ export class Visual implements IVisual {
                     scaleNumber(rawColorLevelsMin, rawColorLevelsMax, 0.01, 0.99, <number>rawColorLevels.values[i], 1));
             }
             const tooltipData = {
-                [rawHeights.source.displayName]: rawHeights.values[i],            
+                [rawHeights.source.displayName]: rawHeights.values[i],
                 [rawWaterLevel.source.displayName]: rawWaterLevel.values[i]
             }
 
@@ -527,7 +557,7 @@ export class Visual implements IVisual {
                 displayName: key,
                 value: value[key].toString()
             });
-        }        
+        }
         return visualTooltipDataItems;
     }
 }
