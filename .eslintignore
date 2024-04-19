@@ -2,4 +2,8 @@ assets
 style
 dist
 node_modules
+coverage
+test
 .eslintrc.js
+karma.conf.ts
+test.webpack.config.js

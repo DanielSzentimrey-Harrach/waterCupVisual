@@ -101,25 +101,23 @@ export class Visual implements IVisual {
 
     public update(options: VisualUpdateOptions) {
         this.formattingSettings = this.formattingSettingsService.populateFormattingSettingsModel(VisualFormattingSettingsModel, options.dataViews[0]);
-        //let vpWidth: number = options.viewport.width // divide by 2 because there are two divs
-        //let vpHeight: number = options.viewport.height;
-
         const dataView: powerbi.DataView = options.dataViews[0];
 
         if (!this.validateDataView(dataView)) {
             /// TODO: fix this so it displays at the middle of the visual
-            this.target.innerHTML = "<div class='noData'>Please select a Category, Height, and Water Level</div>";
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'noData';
+            errorDiv.innerText = 'Please select a Category, Height, and Water Level';
+            this.target.appendChild(errorDiv);
             return;
         }
 
-        //const maxDivWidth = 300;
-        //let divWidth = Math.min(vpWidth, maxDivWidth);
         const cupCanvasWidth = this.formattingSettings.cupCard.cupCanvasGroupSettings.width.value;
         const cupCanvasHeight = this.formattingSettings.cupCard.cupCanvasGroupSettings.height.value;
 
-        let viewModel: WaterCupViewModel = this.visualTransform(dataView, cupCanvasWidth, cupCanvasHeight);
+        const viewModel: WaterCupViewModel = this.visualTransform(dataView, cupCanvasWidth, cupCanvasHeight);
 
-        this.target.innerHTML = '';
+        this.target.textContent = '';
         const outerContainer = document.createElement('div');
         outerContainer.className = 'outerContainer';
         this.target.appendChild(outerContainer);
@@ -139,7 +137,7 @@ export class Visual implements IVisual {
                 const multiSelect = (mouseEvent as MouseEvent).ctrlKey;
                 this.selectionManager.select(viewModel.data[i].selectionId, multiSelect);
             });
-            let cup = this.getCup(viewModel.data[i].height, viewModel.data[i].width, viewModel.data[i].fillRate, cupCanvasWidth, cupCanvasHeight);
+            const cup = this.getCup(viewModel.data[i].height, viewModel.data[i].width, viewModel.data[i].fillRate, cupCanvasWidth, cupCanvasHeight);
             cupDiv.appendChild(cup.node());
             d3.select(cup.node()).style('background-color', this.formattingSettings.cupCard.cupCanvasGroupSettings.backgroundColor.value.value);
             d3.select(cup.node()).selectAll('.filledArea').style('fill', viewModel.data[i].colorLevel);
@@ -193,8 +191,7 @@ export class Visual implements IVisual {
 
         this.tooltipServiceWrapper.addTooltip(
             d3.selectAll('svg'),
-            (tooltipEvent: TooltipEventArgs<Record<string, any>>) => Visual.getTooltipData(tooltipEvent),
-            (tooltipEvent: TooltipEventArgs<Record<string, any>>) => null
+            (tooltipEvent: TooltipEventArgs<Record<string, any>>) => Visual.getTooltipData(tooltipEvent)
         );
     }
 
@@ -212,8 +209,10 @@ export class Visual implements IVisual {
         return requiredColumns.every(column => columnsInDataView.includes(column));
     }
 
+    /* eslint-disable max-lines-per-function */
+    // Disabling the ESLint check as this function is a single block of code that is not easily split into smaller functions. It's long because it's constructing each d3 object separately
     private getCup(height: number, width: number, fillRate: number, containerWidth: number, containerHeight: number): Selection<SVGElement> {
-        let svg = d3.create('svg')
+        const svg = d3.create('svg')
             .classed('ovalDiagram', true)
             .attr("width", containerWidth)
             .attr("height", containerHeight);
@@ -221,7 +220,7 @@ export class Visual implements IVisual {
             .classed('cupContainer', true);
 
         const bottomOvalShrink = 0.9;
-        const glassThickness = Math.min(Math.max(width * 0.05, 8), 15);
+        const glassThickness = Math.min(width * 0.05, 15); //TODO: consider using a uniform thickness for all cups
 
         const cx = containerWidth / 2;
         
@@ -255,12 +254,13 @@ export class Visual implements IVisual {
          */
 
         // Define the line generator for later use
-        let line = d3.line()
+        const line = d3.line()
             .x(function (d) { return d[0]; })
             .y(function (d) { return d[1]; });
 
         // 1. Bottom outer oval
-        const bottomOuterOval = container.append("ellipse")
+        // bottomOuterOval 
+        container.append("ellipse")
             .attr("cx", cx)
             .attr("cy", bottomY)
             .attr("rx", bottomR)
@@ -269,7 +269,8 @@ export class Visual implements IVisual {
             .style("stroke", strokeColor)
             .style("fill", glassColor);
 
-        const bottomOuterOvalOverlay = container.append("ellipse")
+        // bottomOuterOvalOverlay
+        container.append("ellipse")
             .attr("cx", cx)
             .attr("cy", bottomY - strokeThickness)
             .attr("rx", bottomR)
@@ -286,7 +287,8 @@ export class Visual implements IVisual {
             { x: cx - bottomR, y: bottomY }  // bottom left 
         ]
 
-        const leftWall = container.append("path")
+        // leftWall
+        container.append("path")
             .attr("d", line(points.map(p => [p.x, p.y])))
             .style("stroke", "none")
             .style("fill", glassColor);
@@ -299,13 +301,15 @@ export class Visual implements IVisual {
             { x: cx + bottomR, y: bottomY }  // bottom left point of the bottom oval
         ]
 
-        const rightWall = container.append("path")
+        // rightWall
+        container.append("path")
             .attr("d", line(points.map(p => [p.x, p.y])))
             .style("stroke", "none")
             .style("fill", glassColor);
 
         // 3. Glass outer wall
-        const leftOuterLine = container.append("line")
+        // leftOuterLine
+        container.append("line")
             .attr("x1", cx - topR)
             .attr("y1", topY)
             .attr("x2", cx - bottomR)
@@ -313,7 +317,8 @@ export class Visual implements IVisual {
             .style("stroke-width", strokeThickness)
             .style("stroke", strokeColor);
 
-        const rightOuterLine = container.append("line")
+        // rightOuterLine
+        container.append("line")
             .attr("x1", cx + topR)
             .attr("y1", topY)
             .attr("x2", cx + bottomR)
@@ -322,7 +327,8 @@ export class Visual implements IVisual {
             .style("stroke", strokeColor);
 
         // 4. Bottom inner oval
-        const bottomInnerOval = container.append("ellipse")
+        // bottomInnerOval
+        container.append("ellipse")
             .attr("cx", cx)
             .attr("cy", bottomY - glassThickness)
             .attr("rx", bottomInnerR)
@@ -341,13 +347,15 @@ export class Visual implements IVisual {
         ];
 
         // Append the path and apply the line generator
-        const filledArea = container.append("path")
+        // filledArea
+        container.append("path")
             .attr("d", line(points.map(p => [p.x, p.y])))
             .classed('filledArea', true)
             .style("stroke", "none");
 
         // 6. Glass inner wall
-        const leftInnerLine = container.append("line")
+        // leftInnerLine
+        container.append("line")
             .attr("x1", cx - topR + glassThickness)
             .attr("y1", topY)
             .attr("x2", cx - bottomInnerR)
@@ -355,7 +363,8 @@ export class Visual implements IVisual {
             .style("stroke-width", strokeThickness)
             .style("stroke", strokeColor);
 
-        const rightInnerLine = container.append("line")
+        // rightInnerLine
+        container.append("line")
             .attr("x1", cx + topR - glassThickness)
             .attr("y1", topY)
             .attr("x2", cx + bottomInnerR)
@@ -364,7 +373,8 @@ export class Visual implements IVisual {
             .style("stroke", strokeColor);
 
         // 7. Water top oval
-        const liquidTopOval = container.append("ellipse")
+        // liquidTopOval
+        container.append("ellipse")
             .attr("cx", cx)
             .attr("cy", liquidY)
             .attr("rx", liquidR)
@@ -374,8 +384,8 @@ export class Visual implements IVisual {
             .style("stroke", strokeColor);
 
         // 8. Upper arc
-        let maskId = "myMask" + this.maskIdCounter++;
-        let mask = container.append("defs").append("mask").attr("id", maskId);
+        const maskId = "myMask" + this.maskIdCounter++;
+        const mask = container.append("defs").append("mask").attr("id", maskId);
         mask.append("ellipse")
             .attr("cx", cx)
             .attr("cy", topY)
@@ -390,7 +400,8 @@ export class Visual implements IVisual {
             .attr("ry", topInnerR / 5 - glassThickness / 2)
             .style("fill", "black");
 
-        const topFillOval = container.append("ellipse")
+        // topFillOval
+        container.append("ellipse")
             .attr("cx", cx)
             .attr("cy", topY)
             .attr("rx", topR)
@@ -399,7 +410,8 @@ export class Visual implements IVisual {
             .style("fill", glassColor)
             .attr("mask", "url(#" + maskId + ")");
 
-        const topOvalOuterStroke = container.append("ellipse")
+        // topOvalOuterStroke
+        container.append("ellipse")
             .attr("cx", cx)
             .attr("cy", topY)
             .attr("rx", topR)
@@ -408,7 +420,8 @@ export class Visual implements IVisual {
             .style("stroke", strokeColor)
             .style("fill", "none");
 
-        const topOvalInnerStroke = container.append("ellipse")
+        // topOvalInnerStroke 
+        container.append("ellipse")
             .attr("cx", cx)
             .attr("cy", topY)
             .attr("rx", topInnerR)
@@ -426,39 +439,41 @@ export class Visual implements IVisual {
         ];
 
         // Append the path and apply the line generator
-        const reflection = container.append("path")
+        //reflection
+        container.append("path")
             .attr("d", line(points.map(p => [p.x, p.y])))
             .style("stroke", "none")
             .style("fill", "rgba(255, 255, 255, 0.5)");
 
         return svg;
     }
+    /* eslint-enable */
 
     private visualTransform(dataView: powerbi.DataView, width: number, height: number): WaterCupViewModel {
-        let viewModel: WaterCupViewModel = {
+        const viewModel: WaterCupViewModel = {
             data: []
         };
 
         // Determine which data roles are present in the data view and identify their indeces
-        let commentsIndex = dataView.categorical.values.map(value => value.source.roles).findIndex(roles => roles.hasOwnProperty('categoryComments'));
-        let heightIndex = dataView.categorical.values.map(value => value.source.roles).findIndex(roles => roles.hasOwnProperty('height'));
-        let widthIndexRaw = dataView.categorical.values.map(value => value.source.roles).findIndex(roles => roles.hasOwnProperty('width'));
+        const commentsIndex = dataView.categorical.values.map(value => value.source.roles).findIndex(roles => Object.prototype.hasOwnProperty.call(roles, 'categoryComments'));
+        const heightIndex = dataView.categorical.values.map(value => value.source.roles).findIndex(roles => Object.prototype.hasOwnProperty.call(roles, 'height'));
+        const widthIndexRaw = dataView.categorical.values.map(value => value.source.roles).findIndex(roles => Object.prototype.hasOwnProperty.call(roles, 'width'));
         // if there is no width data specified, we'll use the values from height to determine the relative widths
-        let widthIndex = widthIndexRaw === -1 ? heightIndex : widthIndexRaw;
-        let waterLevelIndex = dataView.categorical.values.map(value => value.source.roles).findIndex(roles => roles.hasOwnProperty('waterlevel'));
-        let colorLevelIndex = dataView.categorical.values.map(value => value.source.roles).findIndex(roles => roles.hasOwnProperty('watercolor'));
+        const widthIndex = widthIndexRaw === -1 ? heightIndex : widthIndexRaw;
+        const waterLevelIndex = dataView.categorical.values.map(value => value.source.roles).findIndex(roles => Object.prototype.hasOwnProperty.call(roles, 'waterlevel'));
+        const colorLevelIndex = dataView.categorical.values.map(value => value.source.roles).findIndex(roles => Object.prototype.hasOwnProperty.call(roles, 'watercolor'));
 
-        let categories = dataView.categorical.categories[0];
-        let comments = dataView.categorical.values[commentsIndex];
-        let rawHeights = dataView.categorical.values[heightIndex];
-        let rawHeightMin = <number>dataView.categorical.values[heightIndex].minLocal;
-        let rawHeightMax = <number>dataView.categorical.values[heightIndex].maxLocal;
-        let rawWidths = dataView.categorical.values[widthIndex];
-        let rawWidthMin = <number>dataView.categorical.values[widthIndex].minLocal;
-        let rawWidthMax = <number>dataView.categorical.values[widthIndex].maxLocal;
-        let rawWaterLevel = dataView.categorical.values[waterLevelIndex];
-        let rawWaterLevelMin = <number>dataView.categorical.values[waterLevelIndex].minLocal;
-        let rawWaterLevelMax = <number>dataView.categorical.values[waterLevelIndex].maxLocal;
+        const categories = dataView.categorical.categories[0];
+        const comments = dataView.categorical.values[commentsIndex];
+        const rawHeights = dataView.categorical.values[heightIndex];
+        const rawHeightMin = <number>dataView.categorical.values[heightIndex].minLocal;
+        const rawHeightMax = <number>dataView.categorical.values[heightIndex].maxLocal;
+        const rawWidths = dataView.categorical.values[widthIndex];
+        const rawWidthMin = <number>dataView.categorical.values[widthIndex].minLocal;
+        const rawWidthMax = <number>dataView.categorical.values[widthIndex].maxLocal;
+        const rawWaterLevel = dataView.categorical.values[waterLevelIndex];
+        const rawWaterLevelMin = <number>dataView.categorical.values[waterLevelIndex].minLocal;
+        const rawWaterLevelMax = <number>dataView.categorical.values[waterLevelIndex].maxLocal;
         let rawColorLevels: any;
         let rawColorLevelsMin = 1;
         let rawColorLevelsMax = 1;
@@ -479,7 +494,7 @@ export class Visual implements IVisual {
                     this.formattingSettings.cupCard.cupVisualGroupSettings.waterColorLow.value.value,
                     scaleNumber(rawColorLevelsMin, rawColorLevelsMax, 0.01, 0.99, <number>rawColorLevels.values[i], 1));
             }
-            let tooltipData = {
+            const tooltipData = {
                 [rawHeights.source.displayName]: rawHeights.values[i],            
                 [rawWaterLevel.source.displayName]: rawWaterLevel.values[i]
             }
@@ -506,8 +521,8 @@ export class Visual implements IVisual {
     }
 
     private static getTooltipData(value: Record<string, any>): VisualTooltipDataItem[] {
-        let visualTooltipDataItems: VisualTooltipDataItem[] = [];
-        for (let key in value) {
+        const visualTooltipDataItems: VisualTooltipDataItem[] = [];
+        for (const key in value) {
             visualTooltipDataItems.push({
                 displayName: key,
                 value: value[key].toString()

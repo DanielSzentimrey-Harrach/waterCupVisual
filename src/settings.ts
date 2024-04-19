@@ -32,7 +32,7 @@ import FormattingSettingsSimpleCard = formattingSettings.SimpleCard;
 import FormattingSettingsCompositeCard = formattingSettings.CompositeCard;
 import FormattingSettingsGroup = formattingSettings.Group;
 import FormattingSettingsSlice = formattingSettings.Slice;
-import FormattingSettingsCompositeSlice = formattingSettings.CompositeSlice;
+//import FormattingSettingsCompositeSlice = formattingSettings.CompositeSlice;
 import FormattingSettingsModel = formattingSettings.Model;
 
 /**
@@ -45,7 +45,7 @@ class ContainerBackgroundGroupSettings extends FormattingSettingsGroup {
         value: { value: "" },
         isNoFillItemSupported: true
     });
-    
+
     name: string = "containerBackground";
     displayName: string = "Background";
     slices: Array<FormattingSettingsSlice> = [this.backgroundColor];
@@ -65,9 +65,19 @@ class ContainerBorderGroupSettings extends FormattingSettingsGroup {
     borderThickness = new formattingSettings.NumUpDown({
         name: "containerBorderThickness",
         displayName: "Thickness",
-        value: 1
+        value: 1,
+        options: {
+            minValue: {
+                type: powerbi.visuals.ValidatorType.Min,
+                value: 0
+            },
+            maxValue: {
+                type: powerbi.visuals.ValidatorType.Max,
+                value: 10
+            }
+        }
     });
-    
+
     name: string = "containerBorder";
     displayName: string = "Border";
     slices: Array<FormattingSettingsSlice> = [this.borderColor, this.borderThickness];
@@ -92,13 +102,25 @@ class CupCanvasGroupSettings extends FormattingSettingsGroup {
     width = new formattingSettings.NumUpDown({
         name: "canvasWidth",
         displayName: "Width",
-        value: 300
+        value: 300,
+        options: {
+            minValue: {
+                type: powerbi.visuals.ValidatorType.Min,
+                value: 100
+            }
+        }
     });
 
     height = new formattingSettings.NumUpDown({
         name: "canvasHeight",
         displayName: "Height",
-        value: 300
+        value: 300,
+        options: {
+            minValue: {
+                type: powerbi.visuals.ValidatorType.Min,
+                value: 100
+            }
+        }
     });
 
     backgroundColor = new formattingSettings.ColorPicker({
@@ -107,7 +129,7 @@ class CupCanvasGroupSettings extends FormattingSettingsGroup {
         value: { value: "" },
         isNoFillItemSupported: true
     });
-    
+
     name: string = "cupCanvas";
     displayName: string = "Canvas";
     slices: Array<FormattingSettingsSlice> = [this.width, this.height, this.backgroundColor];
@@ -127,7 +149,17 @@ class CupVisualGroupSettings extends FormattingSettingsGroup {
     strokeThickness = new formattingSettings.NumUpDown({
         name: "cupStrokeThickness",
         displayName: "Stroke Thickness",
-        value: 1
+        value: 1,
+        options: {
+            minValue: {
+                type: powerbi.visuals.ValidatorType.Min,
+                value: 0
+            },
+            maxValue: {
+                type: powerbi.visuals.ValidatorType.Max,
+                value: 10
+            }
+        }
     });
 
     waterColorLow = new formattingSettings.ColorPicker({
@@ -141,7 +173,7 @@ class CupVisualGroupSettings extends FormattingSettingsGroup {
         displayName: "Water Color High",
         value: { value: "#00ff00" }
     });
-    
+
     name: string = "cupVisual";
     displayName: string = "Visual";
     slices: Array<FormattingSettingsSlice> = [this.strokeColor, this.strokeThickness, this.waterColorLow, this.waterColorHigh];
@@ -175,7 +207,17 @@ class TextCategoryGroupSettings extends FormattingSettingsGroup {
         fontSize: new formattingSettings.NumUpDown({
             name: "categoryFontSize",
             displayName: "Font Size",
-            value: 24
+            value: 24,
+            options: {
+                minValue: {
+                    type: powerbi.visuals.ValidatorType.Min,
+                    value: 5
+                },
+                maxValue: {
+                    type: powerbi.visuals.ValidatorType.Max,
+                    value: 72
+                }
+            }
         }),
         bold: new formattingSettings.ToggleSwitch({
             name: "categoryFontBold",
@@ -206,7 +248,7 @@ class TextCategoryGroupSettings extends FormattingSettingsGroup {
         mode: powerbi.visuals.AlignmentGroupMode.Horizonal,
         value: "center"
     });
-    
+
     name: string = "textCategory";
     displayName: string = "Category";
     slices: Array<FormattingSettingsSlice> = [this.categoryFormat, this.categoryColor, this.categoryAlignment];
@@ -227,7 +269,17 @@ class TextCommentGroupSettings extends FormattingSettingsGroup {
         fontSize: new formattingSettings.NumUpDown({
             name: "commentFontSize",
             displayName: "Font Size",
-            value: 12
+            value: 12,
+            options: {
+                minValue: {
+                    type: powerbi.visuals.ValidatorType.Min,
+                    value: 5
+                },
+                maxValue: {
+                    type: powerbi.visuals.ValidatorType.Max,
+                    value: 72
+                }
+            }
         }),
         bold: new formattingSettings.ToggleSwitch({
             name: "commentFontBold",
@@ -258,7 +310,7 @@ class TextCommentGroupSettings extends FormattingSettingsGroup {
         mode: powerbi.visuals.AlignmentGroupMode.Horizonal,
         value: "center"
     });
-    
+
     name: string = "textComment";
     displayName: string = "Comment";
     slices: Array<FormattingSettingsSlice> = [this.commentFormat, this.commentColor, this.commentAlignment];
@@ -267,7 +319,7 @@ class TextCommentGroupSettings extends FormattingSettingsGroup {
 /**
  * Text Formatting Card
  */
-class TextCardSettings extends FormattingSettingsCompositeCard {        
+class TextCardSettings extends FormattingSettingsCompositeCard {
     name: string = "text";
     displayName: string = "Text";
 
@@ -328,7 +380,17 @@ class LegendCardSettings extends FormattingSettingsSimpleCard {
     legendFontSize = new formattingSettings.NumUpDown({
         name: "legendFontSize",
         displayName: "Font Size",
-        value: 12
+        value: 12,
+        options: {
+            minValue: {
+                type: powerbi.visuals.ValidatorType.Min,
+                value: 5
+            },
+            maxValue: {
+                type: powerbi.visuals.ValidatorType.Max,
+                value: 72
+            }
+        }
     });
 
     legendFontFamily = new formattingSettings.FontPicker({
