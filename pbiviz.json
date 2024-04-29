@@ -1,18 +1,18 @@
 {
     "visual": {
         "name": "waterCupVisual",
-        "displayName": "waterCupVisual",
+        "displayName": "Water Cup",
         "guid": "waterCupVisual821A487582524ED6878C0A8F277EF02F",
         "visualClassName": "Visual",
         "version": "1.0.0.0",
         "description": "Water Cup Visual to compare multi-dimensional data between a small number of entities",
-        "supportUrl": "TBD",
-        "gitHubUrl": "TBD"
+        "supportUrl": "https://github.com/DanielSzentimrey-Harrach/waterCupVisual",
+        "gitHubUrl": "https://github.com/DanielSzentimrey-Harrach/waterCupVisual"
     },
-    "apiVersion": "5.4.0",
+    "apiVersion": "5.9.0",
     "author": {
-        "name": "Daniel Sui",
-        "email": "TBD"
+        "name": "Daniel Szentimrey-Harrach",
+        "email": "daniel.szhm@gmail.com"
     },
     "assets": {
         "icon": "assets/icon.png"

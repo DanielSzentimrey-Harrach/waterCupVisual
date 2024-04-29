@@ -45,10 +45,25 @@ class ContainerBackgroundGroupSettings extends FormattingSettingsGroup {
         value: { value: "" },
         isNoFillItemSupported: true
     });
+    backgroundColorTransparency = new formattingSettings.Slider({
+        name: "containerBackgroundColorTransparency",
+        displayName: "Transparency",
+        value: 0,
+        options: {
+            minValue: {
+                type: powerbi.visuals.ValidatorType.Min,
+                value: 0
+            },
+            maxValue: {
+                type: powerbi.visuals.ValidatorType.Max,
+                value: 100
+            }
+        }
+    });
 
     name: string = "containerBackground";
     displayName: string = "Background";
-    slices: Array<FormattingSettingsSlice> = [this.backgroundColor];
+    slices: Array<FormattingSettingsSlice> = [this.backgroundColor, this.backgroundColorTransparency];
 }
 
 /**
@@ -130,9 +145,25 @@ class CupCanvasGroupSettings extends FormattingSettingsGroup {
         isNoFillItemSupported: true
     });
 
+    backgroundColorTransparency = new formattingSettings.Slider({
+        name: "canvasBackgroundColorTransparency",
+        displayName: "Transparency",
+        value: 0,
+        options: {
+            minValue: {
+                type: powerbi.visuals.ValidatorType.Min,
+                value: 0
+            },
+            maxValue: {
+                type: powerbi.visuals.ValidatorType.Max,
+                value: 100
+            }
+        }
+    });
+
     name: string = "cupCanvas";
     displayName: string = "Canvas";
-    slices: Array<FormattingSettingsSlice> = [this.width, this.height, this.backgroundColor];
+    slices: Array<FormattingSettingsSlice> = [this.width, this.height, this.backgroundColor, this.backgroundColorTransparency];
 }
 
 /**
@@ -377,6 +408,22 @@ class LegendCardSettings extends FormattingSettingsSimpleCard {
         isNoFillItemSupported: true
     });
 
+    legendBackgroundColorTransparency = new formattingSettings.Slider({
+        name: "legendBackgroundColorTransparency",
+        displayName: "Transparency",
+        value: 0,
+        options: {
+            minValue: {
+                type: powerbi.visuals.ValidatorType.Min,
+                value: 0
+            },
+            maxValue: {
+                type: powerbi.visuals.ValidatorType.Max,
+                value: 100
+            }
+        }
+    });
+
     legendFontSize = new formattingSettings.NumUpDown({
         name: "legendFontSize",
         displayName: "Font Size",
@@ -405,7 +452,7 @@ class LegendCardSettings extends FormattingSettingsSimpleCard {
         value: { value: "#000000" }
     });
 
-    slices: Array<FormattingSettingsGroup> = [this.heightText, this.widthText, this.waterLevelText, this.waterColorText, this.legendBackgroundColor, this.legendFontSize, this.legendFontFamily, this.legendFontColor];
+    slices: Array<FormattingSettingsGroup> = [this.heightText, this.widthText, this.waterLevelText, this.waterColorText, this.legendBackgroundColor, this.legendBackgroundColorTransparency, this.legendFontSize, this.legendFontFamily, this.legendFontColor];
     topLevelSlice: formattingSettings.SimpleSlice<any> = this.show;
 }
 

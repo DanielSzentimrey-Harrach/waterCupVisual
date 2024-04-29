@@ -81,6 +81,32 @@ function interpolateColor(color1: string, color2: string, factor: number): strin
     return '#' + ((1 << 24) + (resultR << 16) + (resultG << 8) + resultB).toString(16).slice(1, 7);
 }
 
+function hexToRGBA(hex, opacity) {
+    const r = parseInt(hex.slice(1, 3), 16),
+          g = parseInt(hex.slice(3, 5), 16),
+          b = parseInt(hex.slice(5, 7), 16);
+
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+}
+
+function numberToVisualUpdateType(value: number): string[] {
+    const visualUpdateTypes = {
+        [powerbi.VisualUpdateType.Data]: 'Data',
+        [powerbi.VisualUpdateType.Resize]: 'Resize',
+        [powerbi.VisualUpdateType.ViewMode]: 'ViewMode',
+        [powerbi.VisualUpdateType.Style]: 'Style',
+        [powerbi.VisualUpdateType.ResizeEnd]: 'ResizeEnd',
+        [powerbi.VisualUpdateType.FormattingSubSelectionChange]: 'FormattingSubSelectionChange',
+        [powerbi.VisualUpdateType.FormatModeChange]: 'FormatModeChange',
+        [powerbi.VisualUpdateType.FilterOptionsChange]: 'FilterOptionsChange',
+        [powerbi.VisualUpdateType.All]: 'All'
+    };
+
+    return Object.keys(visualUpdateTypes)
+        .filter(key => (value & Number(key)) !== 0)
+        .map(key => visualUpdateTypes[key]);
+}
+
 export class Visual implements IVisual {
     private host: IVisualHost;
     private target: HTMLElement;
@@ -97,17 +123,26 @@ export class Visual implements IVisual {
         this.selectionManager = options.host.createSelectionManager();
         options.element.style.overflow = "auto";
         this.tooltipServiceWrapper = createTooltipServiceWrapper(this.host.tooltipService, options.element);
+        this.handleContextMenu();
     }
 
     public update(options: VisualUpdateOptions) {
         this.formattingSettings = this.formattingSettingsService.populateFormattingSettingsModel(VisualFormattingSettingsModel, options.dataViews[0]);
         const dataView: powerbi.DataView = options.dataViews[0];
 
+        this.target.textContent = '';
+
         if (!this.validateDataView(dataView)) {
-            /// TODO: fix this so it displays at the middle of the visual
             const errorDiv = document.createElement('div');
             errorDiv.className = 'noData';
-            errorDiv.innerText = 'Please select a Category, Height, and Water Level';
+            errorDiv.innerText = 'Please select a Category, Height, and Water Level!';
+            this.target.appendChild(errorDiv);
+            return;
+        }
+        if (!this.validateData(dataView)) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'noData';
+            errorDiv.innerText = 'Please ensure that all numeric data is greater than 0!';
             this.target.appendChild(errorDiv);
             return;
         }
@@ -116,17 +151,19 @@ export class Visual implements IVisual {
         const cupCanvasHeight = this.formattingSettings.cupCard.cupCanvasGroupSettings.height.value;
 
         const viewModel: WaterCupViewModel = this.visualTransform(dataView, cupCanvasWidth, cupCanvasHeight);
-
-        this.target.textContent = '';
+        
         const outerContainer = document.createElement('div');
         outerContainer.className = 'outerContainer';
         this.target.appendChild(outerContainer);
+
+        const glassThickness = this.getGlassThickness(viewModel.data);
 
         for (let i = 0; i < viewModel.data.length; i++) {
             const containerDiv = document.createElement('div');
             containerDiv.style.width = cupCanvasWidth + 10 + 'px';
             containerDiv.className = 'innerContainer';
-            containerDiv.style.backgroundColor = this.formattingSettings.containerCard.containerBackgroundGroup.backgroundColor.value.value;
+            containerDiv.style.backgroundColor = hexToRGBA(this.formattingSettings.containerCard.containerBackgroundGroup.backgroundColor.value.value,
+                1 - this.formattingSettings.containerCard.containerBackgroundGroup.backgroundColorTransparency.value / 100);
             containerDiv.style.border = this.formattingSettings.containerCard.containerBorderGroup.borderThickness.value + 'px solid ' + this.formattingSettings.containerCard.containerBorderGroup.borderColor.value.value;
             outerContainer.appendChild(containerDiv);
 
@@ -137,9 +174,12 @@ export class Visual implements IVisual {
                 const multiSelect = (mouseEvent as MouseEvent).ctrlKey;
                 this.selectionManager.select(viewModel.data[i].selectionId, multiSelect);
             });
-            const cup = this.getCup(viewModel.data[i].height, viewModel.data[i].width, viewModel.data[i].fillRate, cupCanvasWidth, cupCanvasHeight);
+            
+            const cup = this.getCup(viewModel.data[i].height, viewModel.data[i].width, viewModel.data[i].fillRate, cupCanvasWidth, cupCanvasHeight, glassThickness);
             cupDiv.appendChild(cup.node());
-            d3.select(cup.node()).style('background-color', this.formattingSettings.cupCard.cupCanvasGroupSettings.backgroundColor.value.value);
+            d3.select(cup.node()).style('background-color', hexToRGBA(this.formattingSettings.cupCard.cupCanvasGroupSettings.backgroundColor.value.value,
+                1 - this.formattingSettings.cupCard.cupCanvasGroupSettings.backgroundColorTransparency.value / 100)
+            );
             d3.select(cup.node()).selectAll('.filledArea').style('fill', viewModel.data[i].colorLevel);
             d3.select(cup.node()).data([viewModel.data[i].tooltipInfo]);
             containerDiv.appendChild(cupDiv);
@@ -169,7 +209,7 @@ export class Visual implements IVisual {
         }
 
         if (this.formattingSettings.legendCard.show.value) {
-            const legendDiv = this.getLegend(outerContainer.offsetWidth, cupCanvasWidth);
+            const legendDiv = this.getLegend(outerContainer.offsetWidth, cupCanvasWidth, viewModel.data.length);
             this.target.appendChild(legendDiv);
         }
 
@@ -183,6 +223,18 @@ export class Visual implements IVisual {
         return this.formattingSettingsService.buildFormattingModel(this.formattingSettings);
     }
 
+    private handleContextMenu() {
+        d3.select(this.target).on('contextmenu', (event: PointerEvent, dataPoint) => {
+            const mouseEvent: MouseEvent = event;
+            //const eventTarget: EventTarget = mouseEvent.target;
+            this.selectionManager.showContextMenu(dataPoint ? dataPoint: {}, {
+                x: mouseEvent.clientX,
+                y: mouseEvent.clientY
+            });
+            mouseEvent.preventDefault();
+        });
+    }
+
     // Validate the data view to ensure that the mandatory fields are present
     private validateDataView(dataView: DataView): boolean {
         if (!dataView || !dataView.metadata || !dataView.metadata.columns) {
@@ -193,9 +245,22 @@ export class Visual implements IVisual {
         return requiredColumns.every(column => columnsInDataView.includes(column));
     }
 
+    private validateData(dataView: DataView): boolean {
+        if (!dataView || !dataView.categorical || !dataView.categorical.categories || !dataView.categorical.values) {
+            return false;
+        }
+        for (const value of dataView.categorical.values) {
+            if (value.values.some(v => (typeof v === "number" && v <= 0))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+
     /* eslint-disable max-lines-per-function */
     // Disabling the ESLint check as this function is a single block of code that is not easily split into smaller functions. It's long because it's constructing each d3 object separately
-    private getCup(height: number, width: number, fillRate: number, containerWidth: number, containerHeight: number): Selection<SVGElement> {
+    private getCup(height: number, width: number, fillRate: number, containerWidth: number, containerHeight: number, glassThickness: number): Selection<SVGElement> {
         const svg = d3.create('svg')
             .classed('ovalDiagram', true)
             .attr("width", containerWidth)
@@ -204,17 +269,15 @@ export class Visual implements IVisual {
             .classed('cupContainer', true);
 
         const bottomOvalShrink = 0.9;
-        const glassThickness = Math.min(width * 0.05, 15); //TODO: consider using a uniform thickness for all cups
 
         const cx = containerWidth / 2;
 
-
-        const bottomR = width / 2 * bottomOvalShrink;
-        const bottomY = 0.95 * containerHeight - bottomR / 5;
-        const cy = bottomY - height / 2;
-        const topY = cy - height / 2;
         const topR = width / 2;
-        const topInnerR = width / 2 - glassThickness;
+        const bottomR = topR * bottomOvalShrink;
+        const bottomY = 0.975 * containerHeight - bottomR / 5;
+        const cy = bottomY - height / 2;
+        const topY = cy - height / 2;        
+        const topInnerR = topR - glassThickness;
         const bottomInnerR = bottomR + (glassThickness * (topR - bottomR) / height) - glassThickness;
         const liquidY = bottomY - glassThickness - (height - glassThickness) * fillRate
         const liquidR = bottomInnerR + (topInnerR - bottomInnerR) * fillRate;
@@ -362,7 +425,7 @@ export class Visual implements IVisual {
             .attr("cx", cx)
             .attr("cy", liquidY)
             .attr("rx", liquidR)
-            .attr("ry", liquidR / 5 - glassThickness / 2)
+            .attr("ry", Math.max(liquidR / 5 - glassThickness / 2, 1))
             .classed('filledArea', true)
             .style("stroke-width", strokeThickness)
             .style("stroke", strokeColor);
@@ -381,7 +444,7 @@ export class Visual implements IVisual {
             .attr("cx", cx)
             .attr("cy", topY)
             .attr("rx", topInnerR)
-            .attr("ry", topInnerR / 5 - glassThickness / 2)
+            .attr("ry", Math.max(topInnerR / 5 - glassThickness / 2, 1))
             .style("fill", "black");
 
         // topFillOval
@@ -409,7 +472,7 @@ export class Visual implements IVisual {
             .attr("cx", cx)
             .attr("cy", topY)
             .attr("rx", topInnerR)
-            .attr("ry", topInnerR / 5 - glassThickness / 2)
+            .attr("ry", Math.max(topInnerR / 5 - glassThickness / 2, 1))
             .style("stroke-width", strokeThickness)
             .style("stroke", strokeColor)
             .style("fill", "none");
@@ -433,17 +496,18 @@ export class Visual implements IVisual {
     }
     /* eslint-enable */
 
-    private getLegend(outerContainerOffsetWidth: number, cupCanvasWidth: number): HTMLDivElement {
+    private getLegend(outerContainerOffsetWidth: number, cupCanvasWidth: number, totalCards: number): HTMLDivElement {
         const outerContainerWidth = outerContainerOffsetWidth;
         const containerDivWidth = cupCanvasWidth + 10 + 20 + 2 * this.formattingSettings.containerCard.containerBorderGroup.borderThickness.value; // 2 * 5px margin aroound cupCanvas + 2 * 10px margin around container + 2 * border thickness
-        const containerDivsPerRow = Math.floor(outerContainerWidth / containerDivWidth);
+        const containerDivsPerRow = Math.min(Math.floor(outerContainerWidth / containerDivWidth), totalCards);
 
         const legendDiv = document.createElement('div');
         legendDiv.className = 'legendContainer';
         legendDiv.style.fontFamily = this.formattingSettings.legendCard.legendFontFamily.value;
         legendDiv.style.fontSize = this.formattingSettings.legendCard.legendFontSize.value + 'px';
         legendDiv.style.color = this.formattingSettings.legendCard.legendFontColor.value.value;
-        legendDiv.style.backgroundColor = this.formattingSettings.legendCard.legendBackgroundColor.value.value;
+        legendDiv.style.backgroundColor = hexToRGBA(this.formattingSettings.legendCard.legendBackgroundColor.value.value,
+            1 - this.formattingSettings.legendCard.legendBackgroundColorTransparency.value / 100);
         legendDiv.style.margin = '10px';
         legendDiv.style.padding = '5px';
         legendDiv.style.width = containerDivsPerRow * containerDivWidth - 30 + 'px'; // 30px is the 2 * 10 px margin around the outerContainer, plus the 2 * 5px padding within the label container
@@ -477,6 +541,13 @@ export class Visual implements IVisual {
         }
 
         return legendDiv;
+    }
+
+    private getGlassThickness(data: WaterCupData[]): number {
+        const glassThickness = data.reduce((prev, curr) => {
+            return Math.min(prev, curr.width * 0.05);
+        }, 15);
+        return Math.max(glassThickness, 6);
     }
 
     private visualTransform(dataView: powerbi.DataView, width: number, height: number): WaterCupViewModel {
@@ -515,13 +586,13 @@ export class Visual implements IVisual {
 
         const maxHeight = height * 0.8;
         const minHeight = height * 0.2;
-        const maxWidth = width * 0.95;
+        const maxWidth = Math.min(1.5 * height / 1.9, width * 0.95);
         const minWidth = width * 0.4;
         for (let i = 0; i < categories.values.length; i++) {
             let colorLevel = this.formattingSettings.cupCard.cupVisualGroupSettings.waterColorLow.value.value;
             if (colorLevelIndex !== -1) {
                 colorLevel = interpolateColor(this.formattingSettings.cupCard.cupVisualGroupSettings.waterColorLow.value.value,
-                    this.formattingSettings.cupCard.cupVisualGroupSettings.waterColorLow.value.value,
+                    this.formattingSettings.cupCard.cupVisualGroupSettings.waterColorHigh.value.value,
                     scaleNumber(rawColorLevelsMin, rawColorLevelsMax, 0.01, 0.99, <number>rawColorLevels.values[i], 1));
             }
             const tooltipData = {
