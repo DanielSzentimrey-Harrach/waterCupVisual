@@ -337,5 +337,8 @@
             }
         }
     ],
-    "privileges": []
+    "privileges": [],
+    "sorting": {
+        "default": {}
+    }
 }
