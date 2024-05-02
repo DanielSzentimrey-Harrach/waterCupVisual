@@ -34,86 +34,12 @@ import FormattingSettingsGroup = formattingSettings.Group;
 import FormattingSettingsSlice = formattingSettings.Slice;
 //import FormattingSettingsCompositeSlice = formattingSettings.CompositeSlice;
 import FormattingSettingsModel = formattingSettings.Model;
+import { NumUpDown } from "powerbi-visuals-utils-formattingmodel/lib/FormattingSettingsComponents";
 
 /**
- * Container Background Formatting Group
+ * Canvas Formatting Group
  */
-class ContainerBackgroundGroupSettings extends FormattingSettingsGroup {
-    backgroundColor = new formattingSettings.ColorPicker({
-        name: "containerBackgroundColor",
-        displayName: "Color",
-        value: { value: "" },
-        isNoFillItemSupported: true
-    });
-    backgroundColorTransparency = new formattingSettings.Slider({
-        name: "containerBackgroundColorTransparency",
-        displayName: "Transparency",
-        value: 0,
-        options: {
-            minValue: {
-                type: powerbi.visuals.ValidatorType.Min,
-                value: 0
-            },
-            maxValue: {
-                type: powerbi.visuals.ValidatorType.Max,
-                value: 100
-            }
-        }
-    });
-
-    name: string = "containerBackground";
-    displayName: string = "Background";
-    slices: Array<FormattingSettingsSlice> = [this.backgroundColor, this.backgroundColorTransparency];
-}
-
-/**
- * Container Border Formatting Group
- */
-class ContainerBorderGroupSettings extends FormattingSettingsGroup {
-    borderColor = new formattingSettings.ColorPicker({
-        name: "containerBorderColor",
-        displayName: "Color",
-        value: { value: "" },
-        isNoFillItemSupported: true
-    });
-
-    borderThickness = new formattingSettings.NumUpDown({
-        name: "containerBorderThickness",
-        displayName: "Thickness",
-        value: 1,
-        options: {
-            minValue: {
-                type: powerbi.visuals.ValidatorType.Min,
-                value: 0
-            },
-            maxValue: {
-                type: powerbi.visuals.ValidatorType.Max,
-                value: 10
-            }
-        }
-    });
-
-    name: string = "containerBorder";
-    displayName: string = "Border";
-    slices: Array<FormattingSettingsSlice> = [this.borderColor, this.borderThickness];
-}
-
-/**
- * Container Formatting Card
- */
-class ContainerCardSettings extends FormattingSettingsCompositeCard {
-    name: string = "container";
-    displayName: string = "Container";
-
-    containerBackgroundGroup = new ContainerBackgroundGroupSettings(Object());
-    containerBorderGroup = new ContainerBorderGroupSettings(Object());
-    groups: Array<FormattingSettingsGroup> = [this.containerBackgroundGroup, this.containerBorderGroup];
-}
-
-/**
- * Cup Canvas Formatting Group
- */
-class CupCanvasGroupSettings extends FormattingSettingsGroup {
+class CanvasGroupSettings extends FormattingSettingsGroup {
     width = new formattingSettings.NumUpDown({
         name: "canvasWidth",
         displayName: "Width",
@@ -161,15 +87,125 @@ class CupCanvasGroupSettings extends FormattingSettingsGroup {
         }
     });
 
-    name: string = "cupCanvas";
+    name: string = "canvas";
     displayName: string = "Canvas";
     slices: Array<FormattingSettingsSlice> = [this.width, this.height, this.backgroundColor, this.backgroundColorTransparency];
 }
 
 /**
- * Cup Visual Formatting Group
+ * Card Background Formatting Group
  */
-class CupVisualGroupSettings extends FormattingSettingsGroup {
+class CardBackgroundGroupSettings extends FormattingSettingsGroup {
+    backgroundColor = new formattingSettings.ColorPicker({
+        name: "cardBackgroundColor",
+        displayName: "Color",
+        value: { value: "" },
+        isNoFillItemSupported: true
+    });
+    backgroundColorTransparency = new formattingSettings.Slider({
+        name: "cardBackgroundColorTransparency",
+        displayName: "Transparency",
+        value: 0,
+        options: {
+            minValue: {
+                type: powerbi.visuals.ValidatorType.Min,
+                value: 0
+            },
+            maxValue: {
+                type: powerbi.visuals.ValidatorType.Max,
+                value: 100
+            }
+        }
+    });
+
+    name: string = "cardBackground";
+    displayName: string = "Background";
+    slices: Array<FormattingSettingsSlice> = [this.backgroundColor, this.backgroundColorTransparency];
+}
+
+/**
+ * Card Border Formatting Group
+ */
+class CardBorderGroupSettings extends FormattingSettingsGroup {
+    borderColor = new formattingSettings.ColorPicker({
+        name: "cardBorderColor",
+        displayName: "Color",
+        value: { value: "" },
+        isNoFillItemSupported: true
+    });
+
+    borderThickness = new formattingSettings.NumUpDown({
+        name: "cardBorderThickness",
+        displayName: "Thickness",
+        value: 1,
+        options: {
+            minValue: {
+                type: powerbi.visuals.ValidatorType.Min,
+                value: 0
+            },
+            maxValue: {
+                type: powerbi.visuals.ValidatorType.Max,
+                value: 10
+            }
+        }
+    });
+
+    name: string = "cardBorder";
+    displayName: string = "Border";
+    slices: Array<FormattingSettingsSlice> = [this.borderColor, this.borderThickness];
+}
+
+/**
+ * Card Border Formatting Group
+ */
+class CardSpacingGroupSettings extends FormattingSettingsGroup {
+    margin = new formattingSettings.NumUpDown({
+        name: "cardMargin",
+        displayName: "Margin",
+        value: 5,
+        options: {
+            minValue: {
+                type: powerbi.visuals.ValidatorType.Min,
+                value: 0
+            }
+        }
+    });
+
+    padding = new formattingSettings.NumUpDown({
+        name: "cardPadding",
+        displayName: "Padding",
+        value: 5,
+        options: {
+            minValue: {
+                type: powerbi.visuals.ValidatorType.Min,
+                value: 0
+            }
+        }
+    });
+
+    name: string = "cardSpacing";
+    displayName: string = "Spacing";
+    slices: Array<FormattingSettingsSlice> = [this.margin, this.padding];
+}
+
+/**
+ * Card Formatting Card
+ */
+class CardCardSettings extends FormattingSettingsCompositeCard {
+    name: string = "card";
+    displayName: string = "Card";
+
+    canvasGroup = new CanvasGroupSettings(Object());
+    cardBackgroundGroup = new CardBackgroundGroupSettings(Object());
+    cardBorderGroup = new CardBorderGroupSettings(Object());
+    cardSpacingGroup = new CardSpacingGroupSettings(Object());
+    groups: Array<FormattingSettingsGroup> = [this.canvasGroup, this.cardBackgroundGroup, this.cardBorderGroup, this.cardSpacingGroup];
+}
+
+/**
+ * Cup Outline Formatting Group
+ */
+class CupOutlineGroupSettings extends FormattingSettingsGroup {
     strokeColor = new formattingSettings.ColorPicker({
         name: "cupStrokeColor",
         displayName: "Stroke Color",
@@ -193,6 +229,78 @@ class CupVisualGroupSettings extends FormattingSettingsGroup {
         }
     });
 
+    name: string = "cupOutline";
+    displayName: string = "Outline";
+    slices: Array<FormattingSettingsSlice> = [this.strokeColor, this.strokeThickness];
+}
+
+/**
+ * Cup Height Range Formatting Group
+ */
+class CupHeightRangeGroupSettings extends FormattingSettingsGroup {
+    cupHeightRangeMax = new formattingSettings.NumUpDown({
+        name: "cupHeightRangeMax",
+        displayName: "Max",
+        value: null
+    });
+
+    cupHeightRangeMin = new formattingSettings.NumUpDown({
+        name: "cupHeightRangeMin",
+        displayName: "Min",
+        value: null
+    });
+
+    name: string = "cupHeightRange";
+    displayName: string = "Height Range";
+    slices: Array<FormattingSettingsSlice> = [this.cupHeightRangeMax, this.cupHeightRangeMin];
+}
+
+/**
+ * Cup Width Range Formatting Group
+ */
+class CupWidthRangeGroupSettings extends FormattingSettingsGroup {
+    cupWidthRangeMax = new formattingSettings.NumUpDown({
+        name: "cupWidthRangeMax",
+        displayName: "Max",
+        value: null
+    });
+
+    cupWidthRangeMin = new formattingSettings.NumUpDown({
+        name: "cupWidthRangeMin",
+        displayName: "Min",
+        value: null
+    });
+
+    name: string = "cupWidthRange";
+    displayName: string = "Width Range";
+    slices: Array<FormattingSettingsSlice> = [this.cupWidthRangeMax, this.cupWidthRangeMin];
+}
+
+/**
+ * Cup Water Level Range Formatting Group
+ */
+class CupWaterLevelRangeGroupSettings extends FormattingSettingsGroup {
+    cupWaterLevelRangeMax = new formattingSettings.NumUpDown({
+        name: "cupWaterLevelRangeMax",
+        displayName: "Max",
+        value: null
+    });
+
+    cupWaterLevelRangeMin = new formattingSettings.NumUpDown({
+        name: "cupWaterLevelRangeMin",
+        displayName: "Min",
+        value: null
+    });
+
+    name: string = "cupWaterLevelRange";
+    displayName: string = "Water Level Range";
+    slices: Array<FormattingSettingsSlice> = [this.cupWaterLevelRangeMax, this.cupWaterLevelRangeMin];
+}
+
+/**
+ * Cup Water Color Formatting Group
+ */
+class CupWaterColorGroupSettings extends FormattingSettingsGroup {
     waterColorLow = new formattingSettings.ColorPicker({
         name: "waterColorLow",
         displayName: "Water Color Low",
@@ -205,9 +313,21 @@ class CupVisualGroupSettings extends FormattingSettingsGroup {
         value: { value: "#00ff00" }
     });
 
-    name: string = "cupVisual";
-    displayName: string = "Visual";
-    slices: Array<FormattingSettingsSlice> = [this.strokeColor, this.strokeThickness, this.waterColorLow, this.waterColorHigh];
+    cupWaterColorRangeMax = new formattingSettings.NumUpDown({
+        name: "cupWaterColorRangeMax",
+        displayName: "Max",
+        value: null
+    });
+
+    cupWaterColorRangeMin = new formattingSettings.NumUpDown({
+        name: "cupWaterColorRangeMin",
+        displayName: "Min",
+        value: null
+    });
+
+    name: string = "cupWaterColor";
+    displayName: string = "Water Color";
+    slices: Array<FormattingSettingsSlice> = [this.waterColorLow, this.waterColorHigh, this.cupWaterColorRangeMax, this.cupWaterColorRangeMin];
 }
 
 /**
@@ -217,10 +337,13 @@ class CupCardSettings extends FormattingSettingsCompositeCard {
     name: string = "cup";
     displayName: string = "Water Cup";
 
-    cupCanvasGroupSettings = new CupCanvasGroupSettings(Object());
-    cupVisualGroupSettings = new CupVisualGroupSettings(Object());
+    cupOutlineGroupSettings = new CupOutlineGroupSettings(Object());
+    cupHeightRangeGroupSettings = new CupHeightRangeGroupSettings(Object());
+    cupWidthRangeGroupSettings = new CupWidthRangeGroupSettings(Object());
+    cupWaterLevelRangeGroupSettings = new CupWaterLevelRangeGroupSettings(Object());
+    cupWaterColorGroupSettings = new CupWaterColorGroupSettings(Object());
 
-    groups: Array<FormattingSettingsGroup> = [this.cupCanvasGroupSettings, this.cupVisualGroupSettings];
+    groups: Array<FormattingSettingsGroup> = [this.cupOutlineGroupSettings, this.cupHeightRangeGroupSettings, this.cupWidthRangeGroupSettings, this.cupWaterLevelRangeGroupSettings, this.cupWaterColorGroupSettings];
 }
 
 /**
@@ -462,10 +585,10 @@ class LegendCardSettings extends FormattingSettingsSimpleCard {
 */
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     // Create formatting settings model formatting cards
-    containerCard = new ContainerCardSettings();
+    cardCard = new CardCardSettings();
     cupCard = new CupCardSettings();
     textCard = new TextCardSettings();
     legendCard = new LegendCardSettings();
 
-    cards = [this.containerCard, this.cupCard, this.textCard, this.legendCard];
+    cards = [this.cardCard, this.cupCard, this.textCard, this.legendCard];
 }

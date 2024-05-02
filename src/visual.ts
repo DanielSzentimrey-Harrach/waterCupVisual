@@ -83,28 +83,10 @@ function interpolateColor(color1: string, color2: string, factor: number): strin
 
 function hexToRGBA(hex, opacity) {
     const r = parseInt(hex.slice(1, 3), 16),
-          g = parseInt(hex.slice(3, 5), 16),
-          b = parseInt(hex.slice(5, 7), 16);
+        g = parseInt(hex.slice(3, 5), 16),
+        b = parseInt(hex.slice(5, 7), 16);
 
     return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-}
-
-function numberToVisualUpdateType(value: number): string[] {
-    const visualUpdateTypes = {
-        [powerbi.VisualUpdateType.Data]: 'Data',
-        [powerbi.VisualUpdateType.Resize]: 'Resize',
-        [powerbi.VisualUpdateType.ViewMode]: 'ViewMode',
-        [powerbi.VisualUpdateType.Style]: 'Style',
-        [powerbi.VisualUpdateType.ResizeEnd]: 'ResizeEnd',
-        [powerbi.VisualUpdateType.FormattingSubSelectionChange]: 'FormattingSubSelectionChange',
-        [powerbi.VisualUpdateType.FormatModeChange]: 'FormatModeChange',
-        [powerbi.VisualUpdateType.FilterOptionsChange]: 'FilterOptionsChange',
-        [powerbi.VisualUpdateType.All]: 'All'
-    };
-
-    return Object.keys(visualUpdateTypes)
-        .filter(key => (value & Number(key)) !== 0)
-        .map(key => visualUpdateTypes[key]);
 }
 
 export class Visual implements IVisual {
@@ -147,11 +129,11 @@ export class Visual implements IVisual {
             return;
         }
 
-        const cupCanvasWidth = this.formattingSettings.cupCard.cupCanvasGroupSettings.width.value;
-        const cupCanvasHeight = this.formattingSettings.cupCard.cupCanvasGroupSettings.height.value;
+        const cupCanvasWidth = this.formattingSettings.cardCard.canvasGroup.width.value;
+        const cupCanvasHeight = this.formattingSettings.cardCard.canvasGroup.height.value;
 
         const viewModel: WaterCupViewModel = this.visualTransform(dataView, cupCanvasWidth, cupCanvasHeight);
-        
+
         const outerContainer = document.createElement('div');
         outerContainer.className = 'outerContainer';
         this.target.appendChild(outerContainer);
@@ -160,26 +142,31 @@ export class Visual implements IVisual {
 
         for (let i = 0; i < viewModel.data.length; i++) {
             const containerDiv = document.createElement('div');
-            containerDiv.style.width = cupCanvasWidth + 10 + 'px';
+            containerDiv.style.width = cupCanvasWidth + 'px';
+            containerDiv.style.padding = this.formattingSettings.cardCard.cardSpacingGroup.padding.value + 'px';
+            containerDiv.style.margin = this.formattingSettings.cardCard.cardSpacingGroup.margin.value + 'px';
             containerDiv.className = 'innerContainer';
-            containerDiv.style.backgroundColor = hexToRGBA(this.formattingSettings.containerCard.containerBackgroundGroup.backgroundColor.value.value,
-                1 - this.formattingSettings.containerCard.containerBackgroundGroup.backgroundColorTransparency.value / 100);
-            containerDiv.style.border = this.formattingSettings.containerCard.containerBorderGroup.borderThickness.value + 'px solid ' + this.formattingSettings.containerCard.containerBorderGroup.borderColor.value.value;
+            if (this.formattingSettings.cardCard.cardBackgroundGroup.backgroundColor.value.value == null) {
+                containerDiv.style.backgroundColor = "transparent"
+            } else {
+                containerDiv.style.backgroundColor = hexToRGBA(this.formattingSettings.cardCard.cardBackgroundGroup.backgroundColor.value.value,
+                    1 - this.formattingSettings.cardCard.cardBackgroundGroup.backgroundColorTransparency.value / 100);
+            }
+            containerDiv.style.border = this.formattingSettings.cardCard.cardBorderGroup.borderThickness.value + 'px solid ' + this.formattingSettings.cardCard.cardBorderGroup.borderColor.value.value;
             outerContainer.appendChild(containerDiv);
 
             const cupDiv = document.createElement('div');
             cupDiv.style.height = cupCanvasHeight + 'px';
-            cupDiv.style.margin = '5px';
             cupDiv.addEventListener('click', (mouseEvent) => {
                 const multiSelect = (mouseEvent as MouseEvent).ctrlKey;
                 this.selectionManager.select(viewModel.data[i].selectionId, multiSelect);
             });
-            
+
             const cup = this.getCup(viewModel.data[i].height, viewModel.data[i].width, viewModel.data[i].fillRate, cupCanvasWidth, cupCanvasHeight, glassThickness);
             cupDiv.appendChild(cup.node());
-            d3.select(cup.node()).style('background-color', hexToRGBA(this.formattingSettings.cupCard.cupCanvasGroupSettings.backgroundColor.value.value,
-                1 - this.formattingSettings.cupCard.cupCanvasGroupSettings.backgroundColorTransparency.value / 100)
-            );
+            const backgroundColor = this.formattingSettings.cardCard.canvasGroup.backgroundColor.value.value == null ? "transparent" : hexToRGBA(this.formattingSettings.cardCard.canvasGroup.backgroundColor.value.value,
+                1 - this.formattingSettings.cardCard.canvasGroup.backgroundColorTransparency.value / 100);
+            d3.select(cup.node()).style('background-color', backgroundColor);
             d3.select(cup.node()).selectAll('.filledArea').style('fill', viewModel.data[i].colorLevel);
             d3.select(cup.node()).data([viewModel.data[i].tooltipInfo]);
             containerDiv.appendChild(cupDiv);
@@ -227,7 +214,7 @@ export class Visual implements IVisual {
         d3.select(this.target).on('contextmenu', (event: PointerEvent, dataPoint) => {
             const mouseEvent: MouseEvent = event;
             //const eventTarget: EventTarget = mouseEvent.target;
-            this.selectionManager.showContextMenu(dataPoint ? dataPoint: {}, {
+            this.selectionManager.showContextMenu(dataPoint ? dataPoint : {}, {
                 x: mouseEvent.clientX,
                 y: mouseEvent.clientY
             });
@@ -276,14 +263,14 @@ export class Visual implements IVisual {
         const bottomR = topR * bottomOvalShrink;
         const bottomY = 0.975 * containerHeight - bottomR / 5;
         const cy = bottomY - height / 2;
-        const topY = cy - height / 2;        
+        const topY = cy - height / 2;
         const topInnerR = topR - glassThickness;
         const bottomInnerR = bottomR + (glassThickness * (topR - bottomR) / height) - glassThickness;
         const liquidY = bottomY - glassThickness - (height - glassThickness) * fillRate
         const liquidR = bottomInnerR + (topInnerR - bottomInnerR) * fillRate;
 
-        const strokeColor = this.formattingSettings.cupCard.cupVisualGroupSettings.strokeColor.value.value;
-        const strokeThickness = this.formattingSettings.cupCard.cupVisualGroupSettings.strokeThickness.value;
+        const strokeColor = this.formattingSettings.cupCard.cupOutlineGroupSettings.strokeColor.value.value;
+        const strokeThickness = this.formattingSettings.cupCard.cupOutlineGroupSettings.strokeThickness.value;
 
         const glassColor = "#e4f1f7";
 
@@ -497,8 +484,11 @@ export class Visual implements IVisual {
     /* eslint-enable */
 
     private getLegend(outerContainerOffsetWidth: number, cupCanvasWidth: number, totalCards: number): HTMLDivElement {
+        const margin = this.formattingSettings.cardCard.cardSpacingGroup.margin.value;
+        const padding = this.formattingSettings.cardCard.cardSpacingGroup.padding.value;
+        const borderThickness = this.formattingSettings.cardCard.cardBorderGroup.borderThickness.value;
         const outerContainerWidth = outerContainerOffsetWidth;
-        const containerDivWidth = cupCanvasWidth + 10 + 20 + 2 * this.formattingSettings.containerCard.containerBorderGroup.borderThickness.value; // 2 * 5px margin aroound cupCanvas + 2 * 10px margin around container + 2 * border thickness
+        const containerDivWidth = cupCanvasWidth + 2 * (margin + padding + borderThickness); // 2 * 5px margin aroound cupCanvas + 2 * 10px margin around container + 2 * border thickness
         const containerDivsPerRow = Math.min(Math.floor(outerContainerWidth / containerDivWidth), totalCards);
 
         const legendDiv = document.createElement('div');
@@ -506,11 +496,15 @@ export class Visual implements IVisual {
         legendDiv.style.fontFamily = this.formattingSettings.legendCard.legendFontFamily.value;
         legendDiv.style.fontSize = this.formattingSettings.legendCard.legendFontSize.value + 'px';
         legendDiv.style.color = this.formattingSettings.legendCard.legendFontColor.value.value;
-        legendDiv.style.backgroundColor = hexToRGBA(this.formattingSettings.legendCard.legendBackgroundColor.value.value,
-            1 - this.formattingSettings.legendCard.legendBackgroundColorTransparency.value / 100);
-        legendDiv.style.margin = '10px';
+        if (this.formattingSettings.legendCard.legendBackgroundColor.value.value == null) {
+            legendDiv.style.backgroundColor = "transparent"
+        } else {
+            legendDiv.style.backgroundColor = hexToRGBA(this.formattingSettings.legendCard.legendBackgroundColor.value.value,
+                1 - this.formattingSettings.legendCard.legendBackgroundColorTransparency.value / 100);
+        }
+        legendDiv.style.margin = this.formattingSettings.cardCard.cardSpacingGroup.margin.value + 'px';
         legendDiv.style.padding = '5px';
-        legendDiv.style.width = containerDivsPerRow * containerDivWidth - 30 + 'px'; // 30px is the 2 * 10 px margin around the outerContainer, plus the 2 * 5px padding within the label container
+        legendDiv.style.width = containerDivsPerRow * containerDivWidth - 2 * margin - 10 + 'px'; // -10 is to subtract the hardcoded padding of the outer container
         if (this.formattingSettings.legendCard.heightText.value != '') {
             const heightLegendTitle = document.createElement('b');
             heightLegendTitle.innerText = "Height: ";
@@ -567,21 +561,21 @@ export class Visual implements IVisual {
         const categories = dataView.categorical.categories[0];
         const comments = dataView.categorical.values[commentsIndex];
         const rawHeights = dataView.categorical.values[heightIndex];
-        const rawHeightMin = <number>dataView.categorical.values[heightIndex].minLocal;
-        const rawHeightMax = <number>dataView.categorical.values[heightIndex].maxLocal;
+        const rawHeightMin = this.formattingSettings.cupCard.cupHeightRangeGroupSettings.cupHeightRangeMin.value ?? <number>dataView.categorical.values[heightIndex].minLocal;
+        const rawHeightMax = this.formattingSettings.cupCard.cupHeightRangeGroupSettings.cupHeightRangeMax.value ?? <number>dataView.categorical.values[heightIndex].maxLocal;
         const rawWidths = dataView.categorical.values[widthIndex];
-        const rawWidthMin = <number>dataView.categorical.values[widthIndex].minLocal;
-        const rawWidthMax = <number>dataView.categorical.values[widthIndex].maxLocal;
+        const rawWidthMin = this.formattingSettings.cupCard.cupWidthRangeGroupSettings.cupWidthRangeMin.value ?? <number>dataView.categorical.values[widthIndex].minLocal;
+        const rawWidthMax = this.formattingSettings.cupCard.cupWidthRangeGroupSettings.cupWidthRangeMax.value ?? <number>dataView.categorical.values[widthIndex].maxLocal;
         const rawWaterLevel = dataView.categorical.values[waterLevelIndex];
-        const rawWaterLevelMin = <number>dataView.categorical.values[waterLevelIndex].minLocal;
-        const rawWaterLevelMax = <number>dataView.categorical.values[waterLevelIndex].maxLocal;
+        const rawWaterLevelMin = this.formattingSettings.cupCard.cupWaterLevelRangeGroupSettings.cupWaterLevelRangeMin.value ?? <number>dataView.categorical.values[waterLevelIndex].minLocal;
+        const rawWaterLevelMax = this.formattingSettings.cupCard.cupWaterLevelRangeGroupSettings.cupWaterLevelRangeMax.value ?? <number>dataView.categorical.values[waterLevelIndex].maxLocal;
         let rawColorLevels: any;
         let rawColorLevelsMin = 1;
         let rawColorLevelsMax = 1;
         if (colorLevelIndex !== -1) {
             rawColorLevels = dataView.categorical.values[colorLevelIndex];
-            rawColorLevelsMin = <number>dataView.categorical.values[colorLevelIndex].minLocal;
-            rawColorLevelsMax = <number>dataView.categorical.values[colorLevelIndex].maxLocal;
+            rawColorLevelsMin = this.formattingSettings.cupCard.cupWaterColorGroupSettings.cupWaterColorRangeMin.value ?? <number>dataView.categorical.values[colorLevelIndex].minLocal;
+            rawColorLevelsMax = this.formattingSettings.cupCard.cupWaterColorGroupSettings.cupWaterColorRangeMax.value ?? <number>dataView.categorical.values[colorLevelIndex].maxLocal;
         }
 
         const maxHeight = height * 0.8;
@@ -589,11 +583,11 @@ export class Visual implements IVisual {
         const maxWidth = Math.min(1.5 * height / 1.9, width * 0.95);
         const minWidth = width * 0.4;
         for (let i = 0; i < categories.values.length; i++) {
-            let colorLevel = this.formattingSettings.cupCard.cupVisualGroupSettings.waterColorLow.value.value;
+            let colorLevel = this.formattingSettings.cupCard.cupWaterColorGroupSettings.waterColorLow.value.value;
             if (colorLevelIndex !== -1) {
-                colorLevel = interpolateColor(this.formattingSettings.cupCard.cupVisualGroupSettings.waterColorLow.value.value,
-                    this.formattingSettings.cupCard.cupVisualGroupSettings.waterColorHigh.value.value,
-                    scaleNumber(rawColorLevelsMin, rawColorLevelsMax, 0.01, 0.99, <number>rawColorLevels.values[i], 1));
+                colorLevel = interpolateColor(this.formattingSettings.cupCard.cupWaterColorGroupSettings.waterColorLow.value.value,
+                    this.formattingSettings.cupCard.cupWaterColorGroupSettings.waterColorHigh.value.value,
+                    scaleNumber(rawColorLevelsMin, rawColorLevelsMax, 0, 1, <number>rawColorLevels.values[i], 1));
             }
             const tooltipData = {
                 [rawHeights.source.displayName]: rawHeights.values[i],
@@ -632,29 +626,3 @@ export class Visual implements IVisual {
         return visualTooltipDataItems;
     }
 }
-/*
-return [{
-            header: value.category,
-            displayName: "Height",
-            value: value.height.toString()
-        }, {
-            displayName: "Width",
-            value: value.width.toString()
-        }, {
-            displayName: "Water Level",
-            value: value.fillRate.toString()
-        }, {
-            displayName: "Water Color",
-            value: value.colorLevel
-
-        }];
-
-
-interface VisualTooltipDataItem {
-    displayName: string;
-    value: string;
-    color?: string;
-    header?: string;
-    opacity?: string;
-}
-*/

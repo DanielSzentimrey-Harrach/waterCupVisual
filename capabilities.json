@@ -32,9 +32,9 @@
         }
     ],
     "objects": {
-        "container": {
+        "card": {
             "properties": {
-                "containerBackgroundColor": {
+                "cardBackgroundColor": {
                     "type": {
                         "fill": {
                             "solid": {
@@ -45,12 +45,12 @@
                         }
                     }
                 },
-                "containerBackgroundColorTransparency": {
+                "cardBackgroundColorTransparency": {
                     "type": {
                         "numeric": true
                     }
                 },
-                "containerBorderColor": {
+                "cardBorderColor": {
                     "type": {
                         "fill": {
                             "solid": {
@@ -59,15 +59,11 @@
                         }
                     }
                 },
-                "containerBorderThickness": {
+                "cardBorderThickness": {
                     "type": {
                         "numeric": true
                     }
-                }
-            }
-        },
-        "cup": {
-            "properties": {
+                },
                 "canvasWidth": {
                     "type": {
                         "numeric": true
@@ -94,6 +90,20 @@
                         "numeric": true
                     }
                 },
+                "cardPadding": {
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "cardMargin": {
+                    "type": {
+                        "numeric": true
+                    }
+                }
+            }            
+        },
+        "cup": {
+            "properties": {                
                 "cupStrokeThickness": {
                     "type": {
                         "numeric": true
@@ -107,6 +117,54 @@
                             }
                         }
                     }
+                },
+                "cupHeightRangeMin": {
+                    "type": {
+                        "numeric": true
+                    },
+                    "placeHolderText": "Auto"
+                },
+                "cupHeightRangeMax": {
+                    "type": {
+                        "numeric": true
+                    },
+                    "placeHolderText": "Auto"
+                },
+                "cupWidthRangeMin": {
+                    "type": {
+                        "numeric": true
+                    },
+                    "placeHolderText": "Auto"
+                },
+                "cupWidthRangeMax": {
+                    "type": {
+                        "numeric": true
+                    },
+                    "placeHolderText": "Auto"
+                },
+                "cupWaterLevelRangeMin": {
+                    "type": {
+                        "numeric": true
+                    },
+                    "placeHolderText": "Auto"
+                },
+                "cupWaterLevelRangeMax": {
+                    "type": {
+                        "numeric": true
+                    },
+                    "placeHolderText": "Auto"
+                },
+                "cupWaterColorRangeMin": {
+                    "type": {
+                        "numeric": true
+                    },
+                    "placeHolderText": "Auto"
+                },
+                "cupWaterColorRangeMax": {
+                    "type": {
+                        "numeric": true
+                    },
+                    "placeHolderText": "Auto"
                 },
                 "waterColorLow": {
                     "type": {
@@ -340,5 +398,9 @@
     "privileges": [],
     "sorting": {
         "default": {}
+    },
+    "tooltips": {
+        "displayName": "Cup Chart",
+        "description": "Cup Chart"
     }
 }
